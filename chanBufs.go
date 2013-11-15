@@ -5,38 +5,9 @@ package chanBufs
 // Be very careful using this, as no buffer is truly infinite - if the internal
 // buffer grows too large your program will run out of memory and crash.
 func NewInfiniteBuffer() (input chan<- interface{}, output <-chan interface{}) {
-	in := make(chan interface{})
-	out := make(chan interface{})
+	in, out, adjust := NewAdjustableBuffer()
 
-	go func() {
-		var buffer []interface{}
-		for {
-			if len(buffer) == 0 {
-				elem, open := <-in
-				if open {
-					buffer = append(buffer, elem)
-				} else {
-					close(out)
-					return
-				}
-			} else {
-				select {
-				case elem, open := <-in:
-					if open {
-						buffer = append(buffer, elem)
-					} else {
-						for elem := range buffer {
-							out <- elem
-						}
-						close(out)
-						return
-					}
-				case out <- buffer[0]:
-					buffer = buffer[1:]
-				}
-			}
-		}
-	}()
+	adjust <- -1 // set it to infinite
 
 	return in, out
 }
@@ -50,6 +21,8 @@ func NewInfiniteBuffer() (input chan<- interface{}, output <-chan interface{}) {
 // to be possible with this approach, so we do the best we can which is a buffer of 1.
 //
 // Setting a negative size produces an infinite buffer.
+// Be very careful using this, as no buffer is truly infinite - if the internal
+// buffer grows too large your program will run out of memory and crash.
 //
 // It is an error to close the adjust channel, it will be closed automatically when input is closed.
 // It is an error to write to the adjust channel after closing the input channel.
