@@ -1,7 +1,7 @@
 package chanBufs
 
-// NewInfiniteBuffer produces a read-only channel and a write-only channel that
-// behave exactly like the two ends of a single go channel with an infinite buffer.
+// NewInfiniteBuffer produces a write-only channel and a read-only channel that
+// behave exactly like the two ends of a single go channel with an infinite buffer in between.
 // Be very careful using this, as no buffer is truly infinite - if the internal
 // buffer grows too large your program will run out of memory and crash.
 func NewInfiniteBuffer() (chan<- interface{}, <-chan interface{}) {
