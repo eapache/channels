@@ -5,7 +5,7 @@ const (
 	InfiniteBuffer int = -1
 )
 
-// InChannel is an interface representing a writeable channel
+// InChannel is an interface representing a writeable channel.
 type InChannel interface {
 	In() chan<- interface{}
 	Len() int
@@ -13,14 +13,14 @@ type InChannel interface {
 	Close()
 }
 
-// OutChannel is an interface representing a readable channel
+// OutChannel is an interface representing a readable channel.
 type OutChannel interface {
 	Out() <-chan interface{}
 	Len() int
 	Cap() int
 }
 
-// Channel is an interface representing a channel that is both readable and writeable
+// Channel is an interface representing a channel that is both readable and writeable.
 type Channel interface {
 	InChannel
 	Out() <-chan interface{}
