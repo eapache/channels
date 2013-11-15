@@ -5,8 +5,6 @@ package channels
 //
 // Resizing to no buffer (a size of 0) is, unfortunately, not supported and will panic.
 // Resizing back and forth between a finite and infinite buffer is fully supported.
-// Be very careful using this, as no buffer is truly infinite - if the internal buffer grows too large your
-// program will run out of memory and crash.
 type ResizableChannel struct {
 	input, output chan interface{}
 	resize        chan int

@@ -1,8 +1,6 @@
 package channels
 
 // InfiniteChannel implements the Channel interface with an infinite buffer between the input and the output.
-// Be very careful using this, as no buffer is truly infinite - if the internal buffer grows too large your
-// program will run out of memory and crash.
 type InfiniteChannel struct {
 	input, output chan interface{}
 	buffer        []interface{}
