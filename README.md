@@ -1,6 +1,7 @@
-chanBufs
+channels
 ========
 
-A collection of unusual buffering patterns for golang channels
+A collection of helper functions and special types for working with and
+extending golang's existing channels.
 
-See https://godoc.org/github.com/eapache/chanBufs for documentation.
+See https://godoc.org/github.com/eapache/channels for documentation.
