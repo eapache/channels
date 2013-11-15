@@ -1,3 +1,6 @@
+/* Package channels provides a collection of helper functions, interfaces and special types for
+ * working with and extending the capabilities of golang's existing channels.
+ */
 package channels
 
 const (
