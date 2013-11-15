@@ -35,7 +35,7 @@ func (ch *InfiniteChannel) Close() {
 }
 
 func (ch *InfiniteChannel) shutdown() {
-	for elem := range ch.buffer {
+	for _, elem := range ch.buffer {
 		ch.output <- elem
 	}
 	close(ch.output)

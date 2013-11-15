@@ -51,7 +51,7 @@ func (ch *ResizableChannel) Resize(newSize int) {
 }
 
 func (ch *ResizableChannel) shutdown() {
-	for elem := range ch.buffer {
+	for _, elem := range ch.buffer {
 		ch.output <- elem
 	}
 	close(ch.output)
