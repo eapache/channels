@@ -7,6 +7,6 @@ func Pipe(input OutChannel, output InChannel) {
 		for elem := range input.Out() {
 			output.In() <- elem
 		}
-		out.Close()
+		output.Close()
 	}()
 }
