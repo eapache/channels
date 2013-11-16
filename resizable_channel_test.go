@@ -12,11 +12,11 @@ func TestResizableChannel(t *testing.T) {
 	testChannelPair(t, "default resizable channel", ch, ch)
 
 	ch = NewResizableChannel()
-	ch.Resize(InfiniteBuffer)
+	ch.Resize(Infinity)
 	testChannel(t, "infinite resizable channel", ch)
 
 	ch = NewResizableChannel()
-	ch.Resize(InfiniteBuffer)
+	ch.Resize(Infinity)
 	testChannelPair(t, "infinite resizable channel", ch, ch)
 
 	ch = NewResizableChannel()

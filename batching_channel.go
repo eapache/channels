@@ -6,14 +6,14 @@ package channels
 type BatchingChannel struct {
 	input, output chan interface{}
 	buffer        []interface{}
-	size          int
+	size          BufferCap
 }
 
-func NewBatchingChannel(size int) *BatchingChannel {
-	if size == NoBuffer {
-		panic("channels: BatchingChannel does not support NoBuffer")
+func NewBatchingChannel(size BufferCap) *BatchingChannel {
+	if size == None {
+		panic("channels: BatchingChannel does not support unbuffered behaviour")
 	}
-	if size < 0 && size != InfiniteBuffer {
+	if size < 0 && size != Infinity {
 		panic("channels: invalid negative size in NewBatchingChannel")
 	}
 	ch := &BatchingChannel{make(chan interface{}), make(chan interface{}), nil, size}
@@ -33,7 +33,7 @@ func (ch *BatchingChannel) Len() int {
 	return len(ch.buffer)
 }
 
-func (ch *BatchingChannel) Cap() int {
+func (ch *BatchingChannel) Cap() BufferCap {
 	return ch.size
 }
 
@@ -56,7 +56,7 @@ func (ch *BatchingChannel) batchingBuffer() {
 				ch.shutdown()
 				return
 			}
-		} else if ch.size != InfiniteBuffer && len(ch.buffer) >= ch.size {
+		} else if ch.size != Infinity && len(ch.buffer) >= int(ch.size) {
 			ch.output <- ch.buffer
 			ch.buffer = nil
 		} else {

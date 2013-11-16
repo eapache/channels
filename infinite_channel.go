@@ -24,8 +24,8 @@ func (ch *InfiniteChannel) Len() int {
 	return len(ch.buffer)
 }
 
-func (ch *InfiniteChannel) Cap() int {
-	return InfiniteBuffer
+func (ch *InfiniteChannel) Cap() BufferCap {
+	return Infinity
 }
 
 func (ch *InfiniteChannel) Close() {

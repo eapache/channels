@@ -23,8 +23,8 @@ func (ch *BlackHole) Len() int {
 	return ch.count
 }
 
-func (ch *BlackHole) Cap() int {
-	return InfiniteBuffer
+func (ch *BlackHole) Cap() BufferCap {
+	return Infinity
 }
 
 func (ch *BlackHole) Close() {

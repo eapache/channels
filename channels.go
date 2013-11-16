@@ -8,30 +8,37 @@ Caveat emptor.
 */
 package channels
 
+// BufferCap represents the capacity of the buffer backing a channel. Valid values consist of all
+// positive integers, as well as the special values below.
+type BufferCap int
+
 const (
-	NoBuffer       int = 0
-	InfiniteBuffer int = -1
+	None     BufferCap = 0
+	Infinity BufferCap = -1
 )
 
 // InChannel is an interface representing a writeable channel.
 type InChannel interface {
-	In() chan<- interface{}
-	Len() int
-	Cap() int
-	Close()
+	In() chan<- interface{} // The writeable end of the channel.
+	Len() int               // The number of elements currently buffered.
+	Cap() BufferCap         // The size of the backing buffer.
+	Close()                 // Closes the channel.
 }
 
 // OutChannel is an interface representing a readable channel.
 type OutChannel interface {
-	Out() <-chan interface{}
-	Len() int
-	Cap() int
+	Out() <-chan interface{} // The readable end of the channel.
+	Len() int                // The number of elements currently buffered.
+	Cap() BufferCap          // The size of the backing buffer.
 }
 
 // Channel is an interface representing a channel that is both readable and writeable.
 type Channel interface {
-	InChannel
-	Out() <-chan interface{}
+	In() chan<- interface{}  // The writeable end of the channel.
+	Out() <-chan interface{} // The readable end of the channel.
+	Len() int                // The number of elements currently buffered.
+	Cap() BufferCap          // The size of the backing buffer.
+	Close()                  // Closes the channel.
 }
 
 // Pipe connects the input channel to the output channel so that

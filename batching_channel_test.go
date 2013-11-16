@@ -3,7 +3,7 @@ package channels
 import "testing"
 
 func TestBatchingChannel(t *testing.T) {
-	ch := NewBatchingChannel(InfiniteBuffer)
+	ch := NewBatchingChannel(Infinity)
 	go func() {
 		for i := 0; i < 1000; i++ {
 			ch.In() <- i

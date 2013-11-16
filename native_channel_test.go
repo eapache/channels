@@ -5,10 +5,10 @@ import "testing"
 func TestNativeChannels(t *testing.T) {
 	var ch Channel
 
-	ch = NewNativeChannel(NoBuffer)
+	ch = NewNativeChannel(None)
 	testChannel(t, "bufferless native channel", ch)
 
-	ch = NewNativeChannel(NoBuffer)
+	ch = NewNativeChannel(None)
 	testChannelPair(t, "bufferless native channel", ch, ch)
 
 	ch = NewNativeChannel(5)
