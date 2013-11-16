@@ -31,3 +31,12 @@ func testChannelPair(t *testing.T, name string, in InChannel, out OutChannel) {
 		}
 	}
 }
+
+func TestPipe(t *testing.T) {
+	a := NewNativeChannel(NoBuffer)
+	b := NewNativeChannel(NoBuffer)
+
+	Pipe(a, b)
+
+	testChannelPair(t, "pipe", a, b)
+}
