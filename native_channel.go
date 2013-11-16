@@ -62,3 +62,31 @@ func (ch NativeChannel) Cap() BufferCap {
 func (ch NativeChannel) Close() {
 	close(ch)
 }
+
+// DeadChannel is a placeholder implementation of the Channel interface with no buffer
+// that is never ready for reading or writing. Closing a dead channel is a no-op.
+// Behaves almost like NativeChannel(nil) except that closing a nil NativeChannel will panic.
+type DeadChannel struct{}
+
+func NewDeadChannel() DeadChannel {
+	return DeadChannel{}
+}
+
+func (ch DeadChannel) In() chan<- interface{} {
+	return nil
+}
+
+func (ch DeadChannel) Out() <-chan interface{} {
+	return nil
+}
+
+func (ch DeadChannel) Len() int {
+	return 0
+}
+
+func (ch DeadChannel) Cap() BufferCap {
+	return BufferCap(0)
+}
+
+func (ch DeadChannel) Close() {
+}

@@ -17,3 +17,21 @@ func TestNativeChannels(t *testing.T) {
 	ch = NewNativeChannel(5)
 	testChannelPair(t, "5-buffer native channel", ch, ch)
 }
+
+func TestDeadChannel(t *testing.T) {
+	var ch Channel = NewDeadChannel()
+
+	select {
+	case <-ch.Out():
+		t.Error("read from a dead channel")
+	default:
+	}
+
+	select {
+	case ch.In() <- nil:
+		t.Error("wrote to a dead channel")
+	default:
+	}
+
+	ch.Close()
+}
