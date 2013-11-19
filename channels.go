@@ -17,33 +17,55 @@ const (
 	Infinity BufferCap = -1
 )
 
-// InChannel is an interface representing a writeable channel.
-type InChannel interface {
+// Buffer is an interface for any channel that provides access to query the state of its buffer.
+// Even unbuffered channels can implement this interface by simply returning 0 from Len() and None from Cap().
+type Buffer interface {
+	Len() int       // The number of elements currently buffered.
+	Cap() BufferCap // The maximum number of elements that can be buffered.
+}
+
+// SimpleInChannel is an interface representing a writeable channel that does not necessarily
+// implement the Buffer interface.
+type SimpleInChannel interface {
 	In() chan<- interface{} // The writeable end of the channel.
-	Len() int               // The number of elements currently buffered.
-	Cap() BufferCap         // The size of the backing buffer.
-	Close()                 // Closes the channel.
+	Close()                 // Closes the channel. It is an error to write to In() after calling Close().
 }
 
-// OutChannel is an interface representing a readable channel.
+// InChannel is an interface representing a writeable channel with a buffer.
+type InChannel interface {
+	SimpleInChannel
+	Buffer
+}
+
+// SimpleOutChannel is an interface representing a readable channel that does not necessarily
+// implement the Buffer interface.
+type SimpleOutChannel interface {
+	Out() <-chan interface{} // The readable end of the channel.
+}
+
+// OutChannel is an interface representing a readable channel implementing the Buffer interface.
 type OutChannel interface {
-	Out() <-chan interface{} // The readable end of the channel.
-	Len() int                // The number of elements currently buffered.
-	Cap() BufferCap          // The size of the backing buffer.
+	SimpleOutChannel
+	Buffer
 }
 
-// Channel is an interface representing a channel that is both readable and writeable.
+// SimpleChannel is an interface representing a channel that is both readable and writeable,
+// but does not necessarily implement the Buffer interface.
+type SimpleChannel interface {
+	SimpleInChannel
+	SimpleOutChannel
+}
+
+// Channel is an interface representing a channel that is readable, writeable and implements
+// the Buffer interface
 type Channel interface {
-	In() chan<- interface{}  // The writeable end of the channel.
-	Out() <-chan interface{} // The readable end of the channel.
-	Len() int                // The number of elements currently buffered.
-	Cap() BufferCap          // The size of the backing buffer.
-	Close()                  // Closes the channel.
+	SimpleChannel
+	Buffer
 }
 
 // Pipe connects the input channel to the output channel so that
 // they behave as if a single channel.
-func Pipe(input OutChannel, output InChannel) {
+func Pipe(input SimpleOutChannel, output SimpleInChannel) {
 	go func() {
 		for elem := range input.Out() {
 			output.In() <- elem
