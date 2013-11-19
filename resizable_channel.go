@@ -3,7 +3,8 @@ package channels
 // ResizableChannel implements the Channel interface with a resizable buffer between the input and the output.
 // The channel initially has a buffer size of 1, but can be resized by calling Resize().
 //
-// Resizing to a buffer capacity of None is, unfortunately, not supported and will panic.
+// Resizing to a buffer capacity of None is, unfortunately, not supported and will panic
+// (see https://github.com/eapache/channels/issues/1).
 // Resizing back and forth between a finite and infinite buffer is fully supported.
 type ResizableChannel struct {
 	input, output chan interface{}
