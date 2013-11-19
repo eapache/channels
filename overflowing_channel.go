@@ -1,6 +1,6 @@
 package channels
 
-// OverflowingChannel implements the Channel interface in a way that never blocks.
+// OverflowingChannel implements the Channel interface in a way that never blocks the writer.
 // Specifically, if a value is written to an OverflowingChannel when its buffer is full
 // (or, in an unbuffered case, when the recipient is not ready) then that value is simply discarded.
 // Note that Go's scheduler can cause discarded values when they could be avoided, simply by scheduling
