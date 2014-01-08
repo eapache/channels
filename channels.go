@@ -80,6 +80,9 @@ func Pipe(input SimpleOutChannel, output SimpleInChannel) {
 // channel. When all input channels have been closed, the output channel is closed. Multiplex with a single
 // input channel is equivalent to Pipe (though slightly less efficient).
 func Multiplex(output SimpleInChannel, inputs ...SimpleOutChannel) {
+	if len(inputs) == 0 {
+		panic("channels: Multiplex requires at least one input")
+	}
 	go func() {
 		inputCount := len(inputs)
 		cases := make([]reflect.SelectCase, inputCount)
@@ -97,5 +100,33 @@ func Multiplex(output SimpleInChannel, inputs ...SimpleOutChannel) {
 			}
 		}
 		output.Close()
+	}()
+}
+
+// Tee (like its Unix namesake) takes a single input channel and an arbitrary number of output channels
+// and duplicates each input into every output. When the input channel is closed, all outputs channels are closed.
+// Tee with a single output channel is equivalent to Pipe (though slightly less efficient).
+func Tee(input SimpleOutChannel, outputs ...SimpleInChannel) {
+	if len(outputs) == 0 {
+		panic("channels: Tee requires at least one output")
+	}
+	go func() {
+		cases := make([]reflect.SelectCase, len(outputs))
+		for i := range cases {
+			cases[i].Dir = reflect.SelectSend
+		}
+		for elem := range input.Out() {
+			for i := range cases {
+				cases[i].Chan = reflect.ValueOf(outputs[i].In())
+				cases[i].Send = reflect.ValueOf(elem)
+			}
+			for remaining := len(cases); remaining > 0; remaining -= 1 {
+				chosen, _, _ := reflect.Select(cases)
+				cases[chosen].Chan = reflect.ValueOf(nil)
+			}
+		}
+		for i := range outputs {
+			outputs[i].Close()
+		}
 	}()
 }

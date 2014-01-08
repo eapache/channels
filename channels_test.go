@@ -79,3 +79,37 @@ func TestMultiplex(t *testing.T) {
 		}
 	}
 }
+
+func TestTee(t *testing.T) {
+	a := NewNativeChannel(None)
+	b := NewNativeChannel(None)
+
+	Tee(a, b)
+
+	testChannelPair(t, "simple tee", a, b)
+
+	a = NewNativeChannel(None)
+	outputs := []Channel{
+		NewNativeChannel(None),
+		NewNativeChannel(None),
+		NewNativeChannel(None),
+		NewNativeChannel(None),
+	}
+
+	Tee(a, outputs[0], outputs[1], outputs[2], outputs[3])
+
+	go func() {
+		for i := 0; i < 1000; i++ {
+			a.In() <- i
+		}
+		a.Close()
+	}()
+	for i := 0; i < 1000; i++ {
+		for _, output := range outputs {
+			val := <-output.Out()
+			if i != val.(int) {
+				t.Fatal("teeing expected", i, "but got", val.(int))
+			}
+		}
+	}
+}
