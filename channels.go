@@ -8,6 +8,8 @@ Caveat emptor.
 */
 package channels
 
+import "reflect"
+
 // BufferCap represents the capacity of the buffer backing a channel. Valid values consist of all
 // positive integers, as well as the special values below.
 type BufferCap int
@@ -69,6 +71,30 @@ func Pipe(input SimpleOutChannel, output SimpleInChannel) {
 	go func() {
 		for elem := range input.Out() {
 			output.In() <- elem
+		}
+		output.Close()
+	}()
+}
+
+// Multiplex takes an arbitrary number of input channels and multiplexes their output into a single output
+// channel. When all input channels have been closed, the output channel is closed. Multiplex with a single
+// input channel is equivalent to Pipe (though slightly less efficient).
+func Multiplex(output SimpleInChannel, inputs ...SimpleOutChannel) {
+	go func() {
+		inputCount := len(inputs)
+		cases := make([]reflect.SelectCase, inputCount)
+		for i := range cases {
+			cases[i].Dir = reflect.SelectRecv
+			cases[i].Chan = reflect.ValueOf(inputs[i].Out())
+		}
+		for inputCount > 0 {
+			chosen, recv, recvOK := reflect.Select(cases)
+			if recvOK {
+				output.In() <- recv.Interface()
+			} else {
+				cases[chosen].Chan = reflect.ValueOf(nil)
+				inputCount -= 1
+			}
 		}
 		output.Close()
 	}()
