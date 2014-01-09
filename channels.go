@@ -1,6 +1,16 @@
 /*
-Package channels provides a collection of helper functions, interfaces and special types for
+Package channels provides a collection of helper functions, interfaces and implementations for
 working with and extending the capabilities of golang's existing channels.
+
+The general interface provided is Channel, though sub-interfaces are also provided for cases
+where the full Channel interface cannot be met (for example, InChannel for write-only channels).
+
+Helper functions include Pipe and Tee (which behave much like their Unix namesakes), as well as Multiplex.
+Weak versions of these functions are also provided, which do not close their output channel on completion.
+
+A simple wrapper type called NativeChannel is provided for wrapping native golang channels in the appropriate
+interface. Several special implementations of the Channel interface are also provided, including resizable,
+infinite or overflowing buffers, a black hole (similar to ioutil.Discard) and a batching channel.
 
 Several types in this package provide so-called "infinite" buffers. Be *very* careful using these, as no
 buffer is truly infinite - if such a buffer grows too large your program will run out of memory and crash.
