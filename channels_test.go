@@ -54,7 +54,7 @@ func TestWeakPipe(t *testing.T) {
 	testChannelPair(t, "pipe", a, b)
 }
 
-func testMultiplex(t *testing.T, multi func (output SimpleInChannel, inputs ...SimpleOutChannel)) {
+func testMultiplex(t *testing.T, multi func(output SimpleInChannel, inputs ...SimpleOutChannel)) {
 	a := NewNativeChannel(None)
 	b := NewNativeChannel(None)
 
@@ -97,7 +97,7 @@ func TestWeakMultiplex(t *testing.T) {
 	testMultiplex(t, WeakMultiplex)
 }
 
-func testTee(t *testing.T, tee func (input SimpleOutChannel, outputs ...SimpleInChannel)) {
+func testTee(t *testing.T, tee func(input SimpleOutChannel, outputs ...SimpleInChannel)) {
 	a := NewNativeChannel(None)
 	b := NewNativeChannel(None)
 
