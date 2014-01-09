@@ -5,6 +5,7 @@ package channels
 // (or, in an unbuffered case, when the recipient is not ready) then that value is simply discarded.
 // Note that Go's scheduler can cause discarded values when they could be avoided, simply by scheduling
 // the writer before the reader. This happens a lot particularly with small buffer sizes, so caveat emptor.
+// For the opposite behaviour (discarding the oldest element, not the newest) see RingChannel.
 type OverflowingChannel struct {
 	input, output chan interface{}
 	buffer        []interface{}
