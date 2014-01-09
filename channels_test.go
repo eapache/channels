@@ -45,11 +45,20 @@ func TestPipe(t *testing.T) {
 	testChannelPair(t, "pipe", a, b)
 }
 
-func TestMultiplex(t *testing.T) {
+func TestWeakPipe(t *testing.T) {
 	a := NewNativeChannel(None)
 	b := NewNativeChannel(None)
 
-	Multiplex(b, a)
+	WeakPipe(a, b)
+
+	testChannelPair(t, "pipe", a, b)
+}
+
+func testMultiplex(t *testing.T, multi func (output SimpleInChannel, inputs ...SimpleOutChannel)) {
+	a := NewNativeChannel(None)
+	b := NewNativeChannel(None)
+
+	multi(b, a)
 
 	testChannelPair(t, "simple multiplex", a, b)
 
@@ -61,7 +70,7 @@ func TestMultiplex(t *testing.T) {
 		NewNativeChannel(None),
 	}
 
-	Multiplex(a, inputs[0], inputs[1], inputs[2], inputs[3])
+	multi(a, inputs[0], inputs[1], inputs[2], inputs[3])
 
 	go func() {
 		rand.Seed(time.Now().Unix())
@@ -80,11 +89,19 @@ func TestMultiplex(t *testing.T) {
 	}
 }
 
-func TestTee(t *testing.T) {
+func TestMultiplex(t *testing.T) {
+	testMultiplex(t, Multiplex)
+}
+
+func TestWeakMultiplex(t *testing.T) {
+	testMultiplex(t, WeakMultiplex)
+}
+
+func testTee(t *testing.T, tee func (input SimpleOutChannel, outputs ...SimpleInChannel)) {
 	a := NewNativeChannel(None)
 	b := NewNativeChannel(None)
 
-	Tee(a, b)
+	tee(a, b)
 
 	testChannelPair(t, "simple tee", a, b)
 
@@ -96,7 +113,7 @@ func TestTee(t *testing.T) {
 		NewNativeChannel(None),
 	}
 
-	Tee(a, outputs[0], outputs[1], outputs[2], outputs[3])
+	tee(a, outputs[0], outputs[1], outputs[2], outputs[3])
 
 	go func() {
 		for i := 0; i < 1000; i++ {
@@ -112,4 +129,12 @@ func TestTee(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestTee(t *testing.T) {
+	testTee(t, Tee)
+}
+
+func TestWeakTee(t *testing.T) {
+	testTee(t, WeakTee)
 }

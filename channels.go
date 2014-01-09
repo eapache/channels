@@ -130,3 +130,62 @@ func Tee(input SimpleOutChannel, outputs ...SimpleInChannel) {
 		}
 	}()
 }
+
+// WeakPipe behaves like Pipe (connecting the two channels) except that it does not close
+// the output channel when the input channel is closed.
+func WeakPipe(input SimpleOutChannel, output SimpleInChannel) {
+	go func() {
+		for elem := range input.Out() {
+			output.In() <- elem
+		}
+	}()
+}
+
+// WeakMultiplex behaves like Multiplex (multiplexing multiple inputs into a single output) except that it does not close
+// the output channel when the input channels are closed.
+func WeakMultiplex(output SimpleInChannel, inputs ...SimpleOutChannel) {
+	if len(inputs) == 0 {
+		panic("channels: WeakMultiplex requires at least one input")
+	}
+	go func() {
+		inputCount := len(inputs)
+		cases := make([]reflect.SelectCase, inputCount)
+		for i := range cases {
+			cases[i].Dir = reflect.SelectRecv
+			cases[i].Chan = reflect.ValueOf(inputs[i].Out())
+		}
+		for inputCount > 0 {
+			chosen, recv, recvOK := reflect.Select(cases)
+			if recvOK {
+				output.In() <- recv.Interface()
+			} else {
+				cases[chosen].Chan = reflect.ValueOf(nil)
+				inputCount -= 1
+			}
+		}
+	}()
+}
+
+// WeakTee behaves like Tee (duplicating a single input into multiple outputs) except that it does not close
+// the output channels when the input channel is closed.
+func WeakTee(input SimpleOutChannel, outputs ...SimpleInChannel) {
+	if len(outputs) == 0 {
+		panic("channels: WeakTee requires at least one output")
+	}
+	go func() {
+		cases := make([]reflect.SelectCase, len(outputs))
+		for i := range cases {
+			cases[i].Dir = reflect.SelectSend
+		}
+		for elem := range input.Out() {
+			for i := range cases {
+				cases[i].Chan = reflect.ValueOf(outputs[i].In())
+				cases[i].Send = reflect.ValueOf(elem)
+			}
+			for remaining := len(cases); remaining > 0; remaining -= 1 {
+				chosen, _, _ := reflect.Select(cases)
+				cases[chosen].Chan = reflect.ValueOf(nil)
+			}
+		}
+	}()
+}
