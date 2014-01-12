@@ -26,9 +26,9 @@ import "reflect"
 type BufferCap int
 
 const (
-	// None is the buffer capacity for channels that have no buffer at all.
+	// None is the capacity for channels that have no buffer at all.
 	None BufferCap = 0
-	// Infinity is the buffer capacity for channels with no limit on their buffer size.
+	// Infinity is the capacity for channels with no limit on their buffer size.
 	Infinity BufferCap = -1
 )
 
