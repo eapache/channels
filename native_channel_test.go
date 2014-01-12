@@ -19,7 +19,7 @@ func TestNativeChannels(t *testing.T) {
 }
 
 func TestDeadChannel(t *testing.T) {
-	var ch Channel = NewDeadChannel()
+	ch := NewDeadChannel()
 
 	select {
 	case <-ch.Out():
