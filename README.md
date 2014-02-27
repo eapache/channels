@@ -2,6 +2,7 @@ channels
 ========
 
 [![Build Status](https://travis-ci.org/eapache/channels.png?branch=master)](https://travis-ci.org/eapache/channels)
+[![GoDoc](https://godoc.org/github.com/eapache/channels?status.png)](https://godoc.org/github.com/eapache/channels)
 
 A collection of helper functions and special types for working with and
 extending golang's existing channels.
