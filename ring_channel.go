@@ -8,7 +8,7 @@ package channels
 // For the opposite behaviour (discarding the newest element, not the oldest) see OverflowingChannel.
 type RingChannel struct {
 	input, output chan interface{}
-	buffer        []interface{}
+	buffer        *queue
 	size          BufferCap
 }
 
@@ -20,6 +20,7 @@ func NewRingChannel(size BufferCap) *RingChannel {
 	if size == None {
 		go ch.overflowingDirect()
 	} else {
+		ch.buffer = newQueue()
 		go ch.ringBuffer()
 	}
 	return ch
@@ -34,7 +35,7 @@ func (ch *RingChannel) Out() <-chan interface{} {
 }
 
 func (ch *RingChannel) Len() int {
-	return len(ch.buffer)
+	return ch.buffer.length()
 }
 
 func (ch *RingChannel) Cap() BufferCap {
@@ -46,8 +47,9 @@ func (ch *RingChannel) Close() {
 }
 
 func (ch *RingChannel) shutdown() {
-	for _, elem := range ch.buffer {
-		ch.output <- elem
+	for ch.buffer.length() > 0 {
+		ch.output <- ch.buffer.peek()
+		ch.buffer.dequeue()
 	}
 	close(ch.output)
 }
@@ -66,10 +68,10 @@ func (ch *RingChannel) overflowingDirect() {
 // for all buffered cases
 func (ch *RingChannel) ringBuffer() {
 	for {
-		if len(ch.buffer) == 0 {
+		if ch.buffer.length() == 0 {
 			elem, open := <-ch.input
 			if open {
-				ch.buffer = append(ch.buffer, elem)
+				ch.buffer.enqueue(elem)
 			} else {
 				ch.shutdown()
 				return
@@ -78,16 +80,16 @@ func (ch *RingChannel) ringBuffer() {
 			select {
 			case elem, open := <-ch.input:
 				if open {
-					ch.buffer = append(ch.buffer, elem)
-					if ch.size != Infinity && len(ch.buffer) > int(ch.size) {
-						ch.buffer = ch.buffer[1:]
+					ch.buffer.enqueue(elem)
+					if ch.size != Infinity && ch.buffer.length() > int(ch.size) {
+						ch.buffer.dequeue()
 					}
 				} else {
 					ch.shutdown()
 					return
 				}
-			case ch.output <- ch.buffer[0]:
-				ch.buffer = ch.buffer[1:]
+			case ch.output <- ch.buffer.peek():
+				ch.buffer.dequeue()
 			}
 		}
 	}

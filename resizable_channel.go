@@ -10,11 +10,11 @@ type ResizableChannel struct {
 	input, output chan interface{}
 	resize        chan BufferCap
 	size          BufferCap
-	buffer        []interface{}
+	buffer        *queue
 }
 
 func NewResizableChannel() *ResizableChannel {
-	ch := &ResizableChannel{make(chan interface{}), make(chan interface{}), make(chan BufferCap), 1, nil}
+	ch := &ResizableChannel{make(chan interface{}), make(chan interface{}), make(chan BufferCap), 1, newQueue()}
 	go ch.magicBuffer()
 	return ch
 }
@@ -28,7 +28,7 @@ func (ch *ResizableChannel) Out() <-chan interface{} {
 }
 
 func (ch *ResizableChannel) Len() int {
-	return len(ch.buffer)
+	return ch.buffer.length()
 }
 
 func (ch *ResizableChannel) Cap() BufferCap {
@@ -50,8 +50,9 @@ func (ch *ResizableChannel) Resize(newSize BufferCap) {
 }
 
 func (ch *ResizableChannel) shutdown() {
-	for _, elem := range ch.buffer {
-		ch.output <- elem
+	for ch.buffer.length() > 0 {
+		ch.output <- ch.buffer.peek()
+		ch.buffer.dequeue()
 	}
 	close(ch.output)
 	close(ch.resize)
@@ -59,34 +60,34 @@ func (ch *ResizableChannel) shutdown() {
 
 func (ch *ResizableChannel) magicBuffer() {
 	for {
-		if len(ch.buffer) == 0 {
+		if ch.buffer.length() == 0 {
 			select {
 			case elem, open := <-ch.input:
 				if open {
-					ch.buffer = append(ch.buffer, elem)
+					ch.buffer.enqueue(elem)
 				} else {
 					ch.shutdown()
 					return
 				}
 			case ch.size = <-ch.resize:
 			}
-		} else if ch.size != Infinity && len(ch.buffer) >= int(ch.size) {
+		} else if ch.size != Infinity && ch.buffer.length() >= int(ch.size) {
 			select {
-			case ch.output <- ch.buffer[0]:
-				ch.buffer = ch.buffer[1:]
+			case ch.output <- ch.buffer.peek():
+				ch.buffer.dequeue()
 			case ch.size = <-ch.resize:
 			}
 		} else {
 			select {
 			case elem, open := <-ch.input:
 				if open {
-					ch.buffer = append(ch.buffer, elem)
+					ch.buffer.enqueue(elem)
 				} else {
 					ch.shutdown()
 					return
 				}
-			case ch.output <- ch.buffer[0]:
-				ch.buffer = ch.buffer[1:]
+			case ch.output <- ch.buffer.peek():
+				ch.buffer.dequeue()
 			case ch.size = <-ch.resize:
 			}
 		}
