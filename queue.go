@@ -50,7 +50,7 @@ func (q *queue) peek() interface{} {
 func (q *queue) dequeue() {
 	q.head = (q.head + 1) % len(q.buf)
 	q.count--
-	if len(q.buf) > minQueueLen && q.count*4 < len(q.buf) {
+	if len(q.buf) > minQueueLen && q.count*4 <= len(q.buf) {
 		q.resize()
 	}
 }
