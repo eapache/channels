@@ -3,11 +3,11 @@ package channels
 // InfiniteChannel implements the Channel interface with an infinite buffer between the input and the output.
 type InfiniteChannel struct {
 	input, output chan interface{}
-	buffer        []interface{}
+	buffer        *queue
 }
 
 func NewInfiniteChannel() *InfiniteChannel {
-	ch := &InfiniteChannel{make(chan interface{}), make(chan interface{}), nil}
+	ch := &InfiniteChannel{make(chan interface{}), make(chan interface{}), newQueue()}
 	go ch.infiniteBuffer()
 	return ch
 }
@@ -21,7 +21,7 @@ func (ch *InfiniteChannel) Out() <-chan interface{} {
 }
 
 func (ch *InfiniteChannel) Len() int {
-	return len(ch.buffer)
+	return ch.buffer.length()
 }
 
 func (ch *InfiniteChannel) Cap() BufferCap {
@@ -33,18 +33,19 @@ func (ch *InfiniteChannel) Close() {
 }
 
 func (ch *InfiniteChannel) shutdown() {
-	for _, elem := range ch.buffer {
-		ch.output <- elem
+	for ch.buffer.length() > 0 {
+		ch.output <- ch.buffer.peek()
+		ch.buffer.dequeue()
 	}
 	close(ch.output)
 }
 
 func (ch *InfiniteChannel) infiniteBuffer() {
 	for {
-		if len(ch.buffer) == 0 {
+		if ch.buffer.length() == 0 {
 			elem, open := <-ch.input
 			if open {
-				ch.buffer = append(ch.buffer, elem)
+				ch.buffer.enqueue(elem)
 			} else {
 				ch.shutdown()
 				return
@@ -53,13 +54,13 @@ func (ch *InfiniteChannel) infiniteBuffer() {
 			select {
 			case elem, open := <-ch.input:
 				if open {
-					ch.buffer = append(ch.buffer, elem)
+					ch.buffer.enqueue(elem)
 				} else {
 					ch.shutdown()
 					return
 				}
-			case ch.output <- ch.buffer[0]:
-				ch.buffer = ch.buffer[1:]
+			case ch.output <- ch.buffer.peek():
+				ch.buffer.dequeue()
 			}
 		}
 	}
