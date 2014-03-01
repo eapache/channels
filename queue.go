@@ -6,7 +6,7 @@ const minQueueLen = 8
 // Using this instead of a simple slice+append provides substantial memory and time
 // benefits, and fewer GC pauses.
 type queue struct {
-	buf []interface{}
+	buf               []interface{}
 	head, tail, count int
 }
 
@@ -21,7 +21,7 @@ func (q *queue) length() int {
 func (q *queue) resize() {
 	newBuf := make([]interface{}, q.count*2)
 
-	if (q.tail > q.head) {
+	if q.tail > q.head {
 		copy(newBuf, q.buf[q.head:q.tail])
 	} else {
 		copy(newBuf, q.buf[q.head:len(q.buf)])
@@ -39,7 +39,7 @@ func (q *queue) enqueue(elem interface{}) {
 	}
 
 	q.buf[q.tail] = elem
-	q.tail = (q.tail+1) % len(q.buf)
+	q.tail = (q.tail + 1) % len(q.buf)
 	q.count++
 }
 
@@ -48,7 +48,7 @@ func (q *queue) peek() interface{} {
 }
 
 func (q *queue) dequeue() {
-	q.head = (q.head+1) % len(q.buf)
+	q.head = (q.head + 1) % len(q.buf)
 	q.count--
 	if len(q.buf) > minQueueLen && q.count*4 < len(q.buf) {
 		q.resize()
