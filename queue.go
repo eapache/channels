@@ -1,6 +1,6 @@
 package channels
 
-const minQueueLen = 8
+const minQueueLen = 16
 
 // A fast, ring-buffer queue based on the version suggested by Dariusz Górecki.
 // Using this instead of a simple slice+append provides substantial memory and time
