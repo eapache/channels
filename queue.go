@@ -21,12 +21,12 @@ func (q *queue) length() int {
 func (q *queue) resize() {
 	newBuf := make([]interface{}, q.count*2)
 
-	stop := len(q.buf)
 	if (q.tail > q.head) {
-		stop = q.tail
+		copy(newBuf, q.buf[q.head:q.tail])
+	} else {
+		copy(newBuf, q.buf[q.head:len(q.buf)])
+		copy(newBuf[len(q.buf)-q.head:], q.buf[:q.tail])
 	}
-	copy(newBuf, q.buf[q.head:stop])
-	copy(newBuf[stop-q.head:], q.buf[:q.head])
 
 	q.head = 0
 	q.tail = q.count
