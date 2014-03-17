@@ -5,7 +5,7 @@ channels
 [![GoDoc](https://godoc.org/github.com/eapache/channels?status.png)](https://godoc.org/github.com/eapache/channels)
 
 A collection of helper functions and special types for working with and
-extending golang's existing channels.
+extending [golang](http://golang.org/)'s existing channels.
 
 See https://godoc.org/github.com/eapache/channels for documentation.
 
