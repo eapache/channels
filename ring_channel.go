@@ -4,7 +4,7 @@ package channels
 // Specifically, if a value is written to a RingChannel when its buffer is full then the oldest
 // value in the buffer is discarded to make room (just like a standard ring-buffer).
 // Note that Go's scheduler can cause discarded values when they could be avoided, simply by scheduling
-// the writer before the reader. This happens a lot particularly with small buffer sizes, so caveat emptor.
+// the writer before the reader, so caveat emptor.
 // For the opposite behaviour (discarding the newest element, not the oldest) see OverflowingChannel.
 type RingChannel struct {
 	input, output chan interface{}
