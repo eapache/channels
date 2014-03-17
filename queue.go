@@ -33,7 +33,7 @@ func (q *queue) resize() {
 	q.buf = newBuf
 }
 
-func (q *queue) enqueue(elem interface{}) {
+func (q *queue) add(elem interface{}) {
 	if q.count == len(q.buf) {
 		q.resize()
 	}
@@ -47,7 +47,7 @@ func (q *queue) peek() interface{} {
 	return q.buf[q.head]
 }
 
-func (q *queue) dequeue() {
+func (q *queue) remove() {
 	q.head = (q.head + 1) % len(q.buf)
 	q.count--
 	if len(q.buf) > minQueueLen && q.count*4 <= len(q.buf) {

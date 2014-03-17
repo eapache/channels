@@ -49,7 +49,7 @@ func (ch *RingChannel) Close() {
 func (ch *RingChannel) shutdown() {
 	for ch.buffer.length() > 0 {
 		ch.output <- ch.buffer.peek()
-		ch.buffer.dequeue()
+		ch.buffer.remove()
 	}
 	close(ch.output)
 }
@@ -71,7 +71,7 @@ func (ch *RingChannel) ringBuffer() {
 		if ch.buffer.length() == 0 {
 			elem, open := <-ch.input
 			if open {
-				ch.buffer.enqueue(elem)
+				ch.buffer.add(elem)
 			} else {
 				ch.shutdown()
 				return
@@ -80,16 +80,16 @@ func (ch *RingChannel) ringBuffer() {
 			select {
 			case elem, open := <-ch.input:
 				if open {
-					ch.buffer.enqueue(elem)
+					ch.buffer.add(elem)
 					if ch.size != Infinity && ch.buffer.length() > int(ch.size) {
-						ch.buffer.dequeue()
+						ch.buffer.remove()
 					}
 				} else {
 					ch.shutdown()
 					return
 				}
 			case ch.output <- ch.buffer.peek():
-				ch.buffer.dequeue()
+				ch.buffer.remove()
 			}
 		}
 	}

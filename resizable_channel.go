@@ -52,7 +52,7 @@ func (ch *ResizableChannel) Resize(newSize BufferCap) {
 func (ch *ResizableChannel) shutdown() {
 	for ch.buffer.length() > 0 {
 		ch.output <- ch.buffer.peek()
-		ch.buffer.dequeue()
+		ch.buffer.remove()
 	}
 	close(ch.output)
 	close(ch.resize)
@@ -64,7 +64,7 @@ func (ch *ResizableChannel) magicBuffer() {
 			select {
 			case elem, open := <-ch.input:
 				if open {
-					ch.buffer.enqueue(elem)
+					ch.buffer.add(elem)
 				} else {
 					ch.shutdown()
 					return
@@ -74,20 +74,20 @@ func (ch *ResizableChannel) magicBuffer() {
 		} else if ch.size != Infinity && ch.buffer.length() >= int(ch.size) {
 			select {
 			case ch.output <- ch.buffer.peek():
-				ch.buffer.dequeue()
+				ch.buffer.remove()
 			case ch.size = <-ch.resize:
 			}
 		} else {
 			select {
 			case elem, open := <-ch.input:
 				if open {
-					ch.buffer.enqueue(elem)
+					ch.buffer.add(elem)
 				} else {
 					ch.shutdown()
 					return
 				}
 			case ch.output <- ch.buffer.peek():
-				ch.buffer.dequeue()
+				ch.buffer.remove()
 			case ch.size = <-ch.resize:
 			}
 		}

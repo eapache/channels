@@ -35,7 +35,7 @@ func (ch *InfiniteChannel) Close() {
 func (ch *InfiniteChannel) shutdown() {
 	for ch.buffer.length() > 0 {
 		ch.output <- ch.buffer.peek()
-		ch.buffer.dequeue()
+		ch.buffer.remove()
 	}
 	close(ch.output)
 }
@@ -45,7 +45,7 @@ func (ch *InfiniteChannel) infiniteBuffer() {
 		if ch.buffer.length() == 0 {
 			elem, open := <-ch.input
 			if open {
-				ch.buffer.enqueue(elem)
+				ch.buffer.add(elem)
 			} else {
 				ch.shutdown()
 				return
@@ -54,13 +54,13 @@ func (ch *InfiniteChannel) infiniteBuffer() {
 			select {
 			case elem, open := <-ch.input:
 				if open {
-					ch.buffer.enqueue(elem)
+					ch.buffer.add(elem)
 				} else {
 					ch.shutdown()
 					return
 				}
 			case ch.output <- ch.buffer.peek():
-				ch.buffer.dequeue()
+				ch.buffer.remove()
 			}
 		}
 	}
