@@ -63,6 +63,7 @@ func (ch *OverflowingChannel) overflowingDirect() {
 		default:
 		}
 	}
+	close(ch.output)
 }
 
 // for all buffered cases

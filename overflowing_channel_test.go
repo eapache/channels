@@ -22,7 +22,14 @@ func TestOverflowingChannel(t *testing.T) {
 			t.Fatal("overflowing channel expected", i, "but got", val.(int))
 		}
 	}
-	if val := <-ch.Out(); val != nil {
+	if val, open := <-ch.Out(); open == true {
+		t.Fatal("overflowing channel expected closed but got", val)
+	}
+
+	ch = NewOverflowingChannel(None)
+	ch.In() <- 0
+	ch.Close()
+	if val, open := <-ch.Out(); open == true {
 		t.Fatal("overflowing channel expected closed but got", val)
 	}
 }
