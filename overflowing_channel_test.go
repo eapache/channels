@@ -8,6 +8,9 @@ func TestOverflowingChannel(t *testing.T) {
 	ch = NewOverflowingChannel(Infinity) // yes this is rather silly, but it should work
 	testChannel(t, "infinite overflowing channel", ch)
 
+	ch = NewOverflowingChannel(1)
+	testChannel(t, "single-element overflowing channel", ch)
+
 	ch = NewOverflowingChannel(10)
 	for i := 0; i < 1000; i++ {
 		ch.In() <- i

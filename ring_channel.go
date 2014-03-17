@@ -78,18 +78,26 @@ func (ch *RingChannel) ringBuffer() {
 			}
 		} else {
 			select {
-			case elem, open := <-ch.input:
-				if open {
-					ch.buffer.add(elem)
-					if ch.size != Infinity && ch.buffer.length() > int(ch.size) {
-						ch.buffer.remove()
-					}
-				} else {
-					ch.shutdown()
-					return
-				}
+			// Prefer to write if possible, which is surprisingly effective in reducing
+			// dropped elements due to overflow. The naive read/write select chooses randomly
+			// when both channels are ready, which produces unnecessary drops 50% of the time.
 			case ch.output <- ch.buffer.peek():
 				ch.buffer.remove()
+			default:
+				select {
+				case elem, open := <-ch.input:
+					if open {
+						ch.buffer.add(elem)
+						if ch.size != Infinity && ch.buffer.length() > int(ch.size) {
+							ch.buffer.remove()
+						}
+					} else {
+						ch.shutdown()
+						return
+					}
+				case ch.output <- ch.buffer.peek():
+					ch.buffer.remove()
+				}
 			}
 		}
 	}

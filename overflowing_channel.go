@@ -78,13 +78,21 @@ func (ch *OverflowingChannel) overflowingBuffer() {
 			}
 		} else if ch.size != Infinity && ch.buffer.length() >= int(ch.size) {
 			select {
-			case _, open := <-ch.input: // discard new inputs
-				if !open {
-					ch.shutdown()
-					return
-				}
+			// Prefer to write if possible, which is surprisingly effective in reducing
+			// dropped elements due to overflow. The naive read/write select chooses randomly
+			// when both channels are ready, which produces unnecessary drops 50% of the time.
 			case ch.output <- ch.buffer.peek():
 				ch.buffer.remove()
+			default:
+				select {
+				case _, open := <-ch.input: // discard new inputs
+					if !open {
+						ch.shutdown()
+						return
+					}
+				case ch.output <- ch.buffer.peek():
+					ch.buffer.remove()
+				}
 			}
 		} else {
 			select {
