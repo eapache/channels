@@ -11,3 +11,13 @@ func TestInfiniteChannel(t *testing.T) {
 	ch = NewInfiniteChannel()
 	testChannelPair(t, "infinite channel", ch, ch)
 }
+
+func BenchmarkInfiniteChannelSerial(b *testing.B) {
+	ch := NewInfiniteChannel()
+	for i := 0; i < b.N; i++ {
+		ch.In() <- nil
+	}
+	for i := 0; i < b.N; i++ {
+		<-ch.Out()
+	}
+}
