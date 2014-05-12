@@ -1,5 +1,7 @@
 package channels
 
+import "github.com/eapache/queue"
+
 // RingChannel implements the Channel interface in a way that never blocks the writer.
 // Specifically, if a value is written to a RingChannel when its buffer is full then the oldest
 // value in the buffer is discarded to make room (just like a standard ring-buffer).
@@ -8,7 +10,7 @@ package channels
 // For the opposite behaviour (discarding the newest element, not the oldest) see OverflowingChannel.
 type RingChannel struct {
 	input, output chan interface{}
-	buffer        *queue
+	buffer        *queue.Queue
 	size          BufferCap
 }
 
@@ -16,11 +18,10 @@ func NewRingChannel(size BufferCap) *RingChannel {
 	if size < 0 && size != Infinity {
 		panic("channels: invalid negative size in NewRingChannel")
 	}
-	ch := &RingChannel{make(chan interface{}), make(chan interface{}), nil, size}
+	ch := &RingChannel{make(chan interface{}), make(chan interface{}), queue.New(), size}
 	if size == None {
 		go ch.overflowingDirect()
 	} else {
-		ch.buffer = newQueue()
 		go ch.ringBuffer()
 	}
 	return ch
@@ -35,7 +36,7 @@ func (ch *RingChannel) Out() <-chan interface{} {
 }
 
 func (ch *RingChannel) Len() int {
-	return ch.buffer.length()
+	return ch.buffer.Length()
 }
 
 func (ch *RingChannel) Cap() BufferCap {
@@ -47,9 +48,9 @@ func (ch *RingChannel) Close() {
 }
 
 func (ch *RingChannel) shutdown() {
-	for ch.buffer.length() > 0 {
-		ch.output <- ch.buffer.peek()
-		ch.buffer.remove()
+	for ch.buffer.Length() > 0 {
+		ch.output <- ch.buffer.Peek()
+		ch.buffer.Remove()
 	}
 	close(ch.output)
 }
@@ -69,10 +70,10 @@ func (ch *RingChannel) overflowingDirect() {
 // for all buffered cases
 func (ch *RingChannel) ringBuffer() {
 	for {
-		if ch.buffer.length() == 0 {
+		if ch.buffer.Length() == 0 {
 			elem, open := <-ch.input
 			if open {
-				ch.buffer.add(elem)
+				ch.buffer.Add(elem)
 			} else {
 				ch.shutdown()
 				return
@@ -82,22 +83,22 @@ func (ch *RingChannel) ringBuffer() {
 			// Prefer to write if possible, which is surprisingly effective in reducing
 			// dropped elements due to overflow. The naive read/write select chooses randomly
 			// when both channels are ready, which produces unnecessary drops 50% of the time.
-			case ch.output <- ch.buffer.peek():
-				ch.buffer.remove()
+			case ch.output <- ch.buffer.Peek():
+				ch.buffer.Remove()
 			default:
 				select {
 				case elem, open := <-ch.input:
 					if open {
-						ch.buffer.add(elem)
-						if ch.size != Infinity && ch.buffer.length() > int(ch.size) {
-							ch.buffer.remove()
+						ch.buffer.Add(elem)
+						if ch.size != Infinity && ch.buffer.Length() > int(ch.size) {
+							ch.buffer.Remove()
 						}
 					} else {
 						ch.shutdown()
 						return
 					}
-				case ch.output <- ch.buffer.peek():
-					ch.buffer.remove()
+				case ch.output <- ch.buffer.Peek():
+					ch.buffer.Remove()
 				}
 			}
 		}

@@ -1,5 +1,7 @@
 package channels
 
+import "github.com/eapache/queue"
+
 // ResizableChannel implements the Channel interface with a resizable buffer between the input and the output.
 // The channel initially has a buffer size of 1, but can be resized by calling Resize().
 //
@@ -10,11 +12,11 @@ type ResizableChannel struct {
 	input, output chan interface{}
 	resize        chan BufferCap
 	size          BufferCap
-	buffer        *queue
+	buffer        *queue.Queue
 }
 
 func NewResizableChannel() *ResizableChannel {
-	ch := &ResizableChannel{make(chan interface{}), make(chan interface{}), make(chan BufferCap), 1, newQueue()}
+	ch := &ResizableChannel{make(chan interface{}), make(chan interface{}), make(chan BufferCap), 1, queue.New()}
 	go ch.magicBuffer()
 	return ch
 }
@@ -28,7 +30,7 @@ func (ch *ResizableChannel) Out() <-chan interface{} {
 }
 
 func (ch *ResizableChannel) Len() int {
-	return ch.buffer.length()
+	return ch.buffer.Length()
 }
 
 func (ch *ResizableChannel) Cap() BufferCap {
@@ -50,9 +52,9 @@ func (ch *ResizableChannel) Resize(newSize BufferCap) {
 }
 
 func (ch *ResizableChannel) shutdown() {
-	for ch.buffer.length() > 0 {
-		ch.output <- ch.buffer.peek()
-		ch.buffer.remove()
+	for ch.buffer.Length() > 0 {
+		ch.output <- ch.buffer.Peek()
+		ch.buffer.Remove()
 	}
 	close(ch.output)
 	close(ch.resize)
@@ -60,34 +62,34 @@ func (ch *ResizableChannel) shutdown() {
 
 func (ch *ResizableChannel) magicBuffer() {
 	for {
-		if ch.buffer.length() == 0 {
+		if ch.buffer.Length() == 0 {
 			select {
 			case elem, open := <-ch.input:
 				if open {
-					ch.buffer.add(elem)
+					ch.buffer.Add(elem)
 				} else {
 					ch.shutdown()
 					return
 				}
 			case ch.size = <-ch.resize:
 			}
-		} else if ch.size != Infinity && ch.buffer.length() >= int(ch.size) {
+		} else if ch.size != Infinity && ch.buffer.Length() >= int(ch.size) {
 			select {
-			case ch.output <- ch.buffer.peek():
-				ch.buffer.remove()
+			case ch.output <- ch.buffer.Peek():
+				ch.buffer.Remove()
 			case ch.size = <-ch.resize:
 			}
 		} else {
 			select {
 			case elem, open := <-ch.input:
 				if open {
-					ch.buffer.add(elem)
+					ch.buffer.Add(elem)
 				} else {
 					ch.shutdown()
 					return
 				}
-			case ch.output <- ch.buffer.peek():
-				ch.buffer.remove()
+			case ch.output <- ch.buffer.Peek():
+				ch.buffer.Remove()
 			case ch.size = <-ch.resize:
 			}
 		}

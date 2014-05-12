@@ -1,13 +1,15 @@
 package channels
 
+import "github.com/eapache/queue"
+
 // InfiniteChannel implements the Channel interface with an infinite buffer between the input and the output.
 type InfiniteChannel struct {
 	input, output chan interface{}
-	buffer        *queue
+	buffer        *queue.Queue
 }
 
 func NewInfiniteChannel() *InfiniteChannel {
-	ch := &InfiniteChannel{make(chan interface{}), make(chan interface{}), newQueue()}
+	ch := &InfiniteChannel{make(chan interface{}), make(chan interface{}), queue.New()}
 	go ch.infiniteBuffer()
 	return ch
 }
@@ -21,7 +23,7 @@ func (ch *InfiniteChannel) Out() <-chan interface{} {
 }
 
 func (ch *InfiniteChannel) Len() int {
-	return ch.buffer.length()
+	return ch.buffer.Length()
 }
 
 func (ch *InfiniteChannel) Cap() BufferCap {
@@ -33,19 +35,19 @@ func (ch *InfiniteChannel) Close() {
 }
 
 func (ch *InfiniteChannel) shutdown() {
-	for ch.buffer.length() > 0 {
-		ch.output <- ch.buffer.peek()
-		ch.buffer.remove()
+	for ch.buffer.Length() > 0 {
+		ch.output <- ch.buffer.Peek()
+		ch.buffer.Remove()
 	}
 	close(ch.output)
 }
 
 func (ch *InfiniteChannel) infiniteBuffer() {
 	for {
-		if ch.buffer.length() == 0 {
+		if ch.buffer.Length() == 0 {
 			elem, open := <-ch.input
 			if open {
-				ch.buffer.add(elem)
+				ch.buffer.Add(elem)
 			} else {
 				ch.shutdown()
 				return
@@ -54,13 +56,13 @@ func (ch *InfiniteChannel) infiniteBuffer() {
 			select {
 			case elem, open := <-ch.input:
 				if open {
-					ch.buffer.add(elem)
+					ch.buffer.Add(elem)
 				} else {
 					ch.shutdown()
 					return
 				}
-			case ch.output <- ch.buffer.peek():
-				ch.buffer.remove()
+			case ch.output <- ch.buffer.Peek():
+				ch.buffer.Remove()
 			}
 		}
 	}
