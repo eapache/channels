@@ -25,6 +25,10 @@ func (ch *BatchingChannel) In() chan<- interface{} {
 	return ch.input
 }
 
+// Out returns a <-chan interface{} in order that BatchingChannel conforms to the standard Channel interface provided
+// by this package, however each output value is guaranteed to be of type []interface{} - a slice collecting the most
+// recent batch of values sent on the In channel. The slice is guaranteed to not be empty or nil. In practice the net
+// result is that you need an additional type assertion to access the underlying values.
 func (ch *BatchingChannel) Out() <-chan interface{} {
 	return ch.output
 }
