@@ -1,13 +1,16 @@
 package channels
 
-import "reflect"
+import (
+	"github.com/eapache/queue"
+	"reflect"
+)
 
 //sharedBufferChannel implements SimpleChannel and is created by the public
 //SharedBuffer type below
 type sharedBufferChannel struct {
 	in  chan interface{}
 	out chan interface{}
-	buf *queue
+	buf *queue.Queue
 }
 
 func (sch *sharedBufferChannel) In() chan<- interface{} {
@@ -24,8 +27,8 @@ func (sch *sharedBufferChannel) Close() {
 
 //SharedBuffer ... TODO
 type SharedBuffer struct {
-	cases []reflect.SelectCase
-	chans []*sharedBufferChannel
+	cases []reflect.SelectCase   // 2n+1 of these; [0] is for control, [i%2==0] for send, [i%2==1] for recv
+	chans []*sharedBufferChannel // n of these
 	count int
 	size  BufferCap
 	in    chan *sharedBufferChannel
@@ -53,18 +56,10 @@ func (buf *SharedBuffer) NewChannel() SimpleChannel {
 	ch := &sharedBufferChannel{
 		in:  make(chan interface{}),
 		out: make(chan interface{}),
-		buf: newQueue(),
+		buf: queue.New(),
 	}
 	buf.in <- ch
 	return ch
-}
-
-func (buf *SharedBuffer) Len() int {
-	return buf.count
-}
-
-func (buf *SharedBuffer) Cap() BufferCap {
-	return buf.size
 }
 
 func (buf *SharedBuffer) Close() {
@@ -96,22 +91,52 @@ func (buf *SharedBuffer) mainLoop() {
 			if i%2 == 0 {
 				//Send
 				if buf.count == int(buf.size) {
-					//room in the buffer again
-					//TODO re-enable recv cases
+					//room in the buffer again, re-enable all recv cases
+					for j := range buf.chans {
+						buf.cases[(j*2)+1].Chan = reflect.ValueOf(buf.chans[j].in)
+					}
 				}
 				buf.count--
 				ch := buf.chans[(i-1)/2]
-				if ch.buf.length() > 0 {
-					buf.cases[i].Send = reflect.ValueOf(ch.buf.peek())
-					ch.buf.remove()
+				if ch.buf.Length() > 0 {
+					buf.cases[i].Send = reflect.ValueOf(ch.buf.Peek())
+					ch.buf.Remove()
 				} else {
+					//nothing left for this channel to send, disable that case
 					buf.cases[i].Chan = reflect.Value{}
 					buf.cases[i].Send = reflect.Value{}
 				}
 			} else {
-				//Receive or Close
-				//TODO
+				if ok {
+					//Receive
+					buf.count++
+					ch := buf.chans[i/2]
+					if ch.buf.Length() == 0 && !buf.cases[i].Chan.IsValid() {
+						//this channel now has something to send
+						buf.cases[i].Chan = reflect.ValueOf(ch.out)
+						buf.cases[i].Send = val
+					} else {
+						ch.buf.Add(val.Interface())
+					}
+					if buf.count == int(buf.size) {
+						//buffer full, disable recv cases
+						for j := range buf.chans {
+							buf.cases[(j*2)+1].Chan = reflect.Value{}
+						}
+					}
+				} else {
+					//Close
+					//TODO
+				}
 			}
 		}
 	}
+}
+
+func (buf *SharedBuffer) Len() int {
+	return buf.count
+}
+
+func (buf *SharedBuffer) Cap() BufferCap {
+	return buf.size
 }
