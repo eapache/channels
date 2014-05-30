@@ -8,9 +8,6 @@ func TestRingChannel(t *testing.T) {
 	ch = NewRingChannel(Infinity) // yes this is rather silly, but it should work
 	testChannel(t, "infinite ring-buffer channel", ch)
 
-	ch = NewRingChannel(1)
-	testChannel(t, "single-element ring-buffer channel", ch)
-
 	ch = NewRingChannel(10)
 	for i := 0; i < 1000; i++ {
 		ch.In() <- i
