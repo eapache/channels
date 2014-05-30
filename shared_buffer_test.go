@@ -100,3 +100,28 @@ func TestSharedBufferConcurrent(t *testing.T) {
 	close(done)
 	buf.Close()
 }
+
+func ExampleSharedBuffer() {
+	// never more than 3 elements in the pipeline at once
+	buf := NewSharedBuffer(3)
+
+	ch1 := buf.NewChannel()
+	ch2 := buf.NewChannel()
+
+	// or, instead of a straight pipe, implement your pipeline step
+	Pipe(ch1, ch2)
+
+	// inputs
+	go func() {
+		for i := 0; i < 20; i++ {
+			ch1.In() <- i
+		}
+		ch1.Close()
+	}()
+
+	for _ = range ch2.Out() {
+		// outputs
+	}
+
+	buf.Close()
+}

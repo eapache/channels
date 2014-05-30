@@ -138,3 +138,17 @@ func TestTee(t *testing.T) {
 func TestWeakTee(t *testing.T) {
 	testTee(t, WeakTee)
 }
+
+func ExampleChannel() {
+	var ch Channel
+
+	ch = NewInfiniteChannel()
+
+	for i := 0; i < 10; i++ {
+		ch.In() <- nil
+	}
+
+	for i := 0; i < 10; i++ {
+		<-ch.Out()
+	}
+}
