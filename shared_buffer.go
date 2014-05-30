@@ -26,7 +26,12 @@ func (sch *sharedBufferChannel) Close() {
 	close(sch.in)
 }
 
-//SharedBuffer ... TODO
+//SharedBuffer implements the Buffer interface, and permits multiple SimpleChannel instances to "share" a single buffer.
+//Each channel spawned by NewChannel has its own internal queue (so values flowing through do not get mixed up with
+//other channels) but the total number of elements buffered by all spawned channels is limited to a single capacity. This
+//means *all* such channels block and unblock for writing together. The primary use case is for implementing pipeline-style
+//parallelism with goroutines, limiting the total number of elements in the pipeline without limiting the number of elements
+//at any particular step.
 type SharedBuffer struct {
 	cases []reflect.SelectCase   // 2n+1 of these; [0] is for control, [1,3,5...] for recv, [2,4,6...] for send
 	chans []*sharedBufferChannel // n of these
@@ -53,6 +58,7 @@ func NewSharedBuffer(size BufferCap) *SharedBuffer {
 	return buf
 }
 
+//NewChannel spawns and returns a new channel sharing the underlying buffer.
 func (buf *SharedBuffer) NewChannel() SimpleChannel {
 	ch := &sharedBufferChannel{
 		in:  make(chan interface{}),
@@ -63,6 +69,8 @@ func (buf *SharedBuffer) NewChannel() SimpleChannel {
 	return ch
 }
 
+//Close shuts down the SharedBuffer. It is an error to call Close while channels are still using
+//the buffer (I'm not really sure what would happen if you do so).
 func (buf *SharedBuffer) Close() {
 	// TODO: what if there are still active channels using this buffer?
 	close(buf.in)
@@ -86,7 +94,7 @@ func (buf *SharedBuffer) mainLoop() {
 				}
 			} else {
 				//Close was called on the SharedBuffer itself
-				//TODO
+				return
 			}
 		} else if i%2 == 0 {
 			//Send
