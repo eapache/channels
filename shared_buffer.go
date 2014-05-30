@@ -101,7 +101,9 @@ func (buf *SharedBuffer) mainLoop() {
 			if buf.count == int(buf.size) {
 				//room in the buffer again, re-enable all recv cases
 				for j := range buf.chans {
-					buf.cases[(j*2)+1].Chan = reflect.ValueOf(buf.chans[j].in)
+					if !buf.chans[j].closed {
+						buf.cases[(j*2)+1].Chan = reflect.ValueOf(buf.chans[j].in)
+					}
 				}
 			}
 			buf.count--
