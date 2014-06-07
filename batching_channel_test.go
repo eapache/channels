@@ -2,8 +2,7 @@ package channels
 
 import "testing"
 
-func TestBatchingChannel(t *testing.T) {
-	ch := NewBatchingChannel(Infinity)
+func testBatches(t *testing.T, ch Channel) {
 	go func() {
 		for i := 0; i < 1000; i++ {
 			ch.In() <- i
@@ -19,5 +18,25 @@ func TestBatchingChannel(t *testing.T) {
 			}
 			i++
 		}
+	}
+}
+
+func TestBatchingChannel(t *testing.T) {
+	ch := NewBatchingChannel(Infinity)
+	testBatches(t, ch)
+
+	ch = NewBatchingChannel(4)
+	testBatches(t, ch)
+}
+
+func TestBatchingChannelCap(t *testing.T) {
+	ch := NewBatchingChannel(Infinity)
+	if ch.Cap() != Infinity {
+		t.Error("incorrect capacity on infinite channel")
+	}
+
+	ch = NewBatchingChannel(5)
+	if ch.Cap() != 5 {
+		t.Error("incorrect capacity on infinite channel")
 	}
 }
