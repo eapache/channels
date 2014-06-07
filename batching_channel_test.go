@@ -25,7 +25,7 @@ func TestBatchingChannel(t *testing.T) {
 	ch := NewBatchingChannel(Infinity)
 	testBatches(t, ch)
 
-	ch = NewBatchingChannel(4)
+	ch = NewBatchingChannel(2)
 	testBatches(t, ch)
 }
 
