@@ -18,8 +18,23 @@ func TestNativeChannels(t *testing.T) {
 	testChannelPair(t, "5-buffer native channel", ch, ch)
 }
 
+func TestNativeInOutChannels(t *testing.T) {
+	ch1 := make(chan interface{})
+	ch2 := make(chan interface{})
+
+	Pipe(NativeOutChannel(ch1), NativeInChannel(ch2))
+	NativeInChannel(ch1).Close()
+}
+
 func TestDeadChannel(t *testing.T) {
 	ch := NewDeadChannel()
+
+	if ch.Len() != 0 {
+		t.Error("dead channel length not 0")
+	}
+	if ch.Cap() != 0 {
+		t.Error("dead channel cap not 0")
+	}
 
 	select {
 	case <-ch.Out():
