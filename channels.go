@@ -133,7 +133,7 @@ func Tee(input SimpleOutChannel, outputs ...SimpleInChannel) {
 				cases[i].Chan = reflect.ValueOf(outputs[i].In())
 				cases[i].Send = reflect.ValueOf(elem)
 			}
-			for remaining := len(cases); remaining > 0; remaining -= 1 {
+			for _ = range cases {
 				chosen, _, _ := reflect.Select(cases)
 				cases[chosen].Chan = reflect.ValueOf(nil)
 			}
@@ -195,7 +195,7 @@ func WeakTee(input SimpleOutChannel, outputs ...SimpleInChannel) {
 				cases[i].Chan = reflect.ValueOf(outputs[i].In())
 				cases[i].Send = reflect.ValueOf(elem)
 			}
-			for remaining := len(cases); remaining > 0; remaining -= 1 {
+			for _ = range cases {
 				chosen, _, _ := reflect.Select(cases)
 				cases[chosen].Chan = reflect.ValueOf(nil)
 			}
