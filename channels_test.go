@@ -139,6 +139,27 @@ func TestWeakTee(t *testing.T) {
 	testTee(t, WeakTee)
 }
 
+func TestWrap(t *testing.T) {
+	rawChan := make(chan int, 5)
+	ch := Wrap(rawChan)
+
+	for i := 0; i < 5; i++ {
+		rawChan <- i
+	}
+	close(rawChan)
+
+	for i := 0; i < 5; i++ {
+		x := (<-ch.Out()).(int)
+		if x != i {
+			t.Error("Wrapped value", x, "was expecting", i)
+		}
+	}
+	_, ok := <-ch.Out()
+	if ok {
+		t.Error("Wrapped channel didn't close")
+	}
+}
+
 func ExampleChannel() {
 	var ch Channel
 

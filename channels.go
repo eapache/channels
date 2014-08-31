@@ -202,3 +202,28 @@ func WeakTee(input SimpleOutChannel, outputs ...SimpleInChannel) {
 		}
 	}()
 }
+
+// Wrap takes any readable channel type (chan or <-chan but not chan<-) and
+// exposes it as a SimpleOutChannel for easy integration with existing channel sources.
+// It panics if the input is not a readable channel.
+func Wrap(ch interface{}) SimpleOutChannel {
+	t := reflect.TypeOf(ch)
+	if t.Kind() != reflect.Chan || t.ChanDir()&reflect.RecvDir == 0 {
+		panic("channels: input to Wrap must be readable channel")
+	}
+	realChan := make(chan interface{})
+
+	go func() {
+		v := reflect.ValueOf(ch)
+		for {
+			x, ok := v.Recv()
+			if !ok {
+				close(realChan)
+				return
+			}
+			realChan <- x.Interface()
+		}
+	}()
+
+	return NativeOutChannel(realChan)
+}
