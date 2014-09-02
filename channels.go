@@ -109,7 +109,7 @@ func Multiplex(output SimpleInChannel, inputs ...SimpleOutChannel) {
 				output.In() <- recv.Interface()
 			} else {
 				cases[chosen].Chan = reflect.ValueOf(nil)
-				inputCount -= 1
+				inputCount--
 			}
 		}
 		output.Close()
@@ -173,7 +173,7 @@ func WeakMultiplex(output SimpleInChannel, inputs ...SimpleOutChannel) {
 				output.In() <- recv.Interface()
 			} else {
 				cases[chosen].Chan = reflect.ValueOf(nil)
-				inputCount -= 1
+				inputCount--
 			}
 		}
 	}()

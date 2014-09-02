@@ -34,7 +34,7 @@ func (ch *BlackHole) Close() {
 
 func (ch *BlackHole) discard() {
 	for _ = range ch.input {
-		ch.count += 1
+		ch.count++
 	}
 	close(ch.stopper)
 }
