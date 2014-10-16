@@ -44,7 +44,7 @@ func TestResizableChannelOnline(t *testing.T) {
 
 	go func() {
 		for i := 0; i < 1000; i++ {
-			ch.Resize(BufferCap(rand.Intn(50)+1))
+			ch.Resize(BufferCap(rand.Intn(50) + 1))
 		}
 		close(stopper)
 	}()

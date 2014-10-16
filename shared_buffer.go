@@ -1,8 +1,9 @@
 package channels
 
 import (
-	"github.com/eapache/queue"
 	"reflect"
+
+	"github.com/eapache/queue"
 )
 
 //sharedBufferChannel implements SimpleChannel and is created by the public
