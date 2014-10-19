@@ -160,6 +160,28 @@ func TestWrap(t *testing.T) {
 	}
 }
 
+func TestUnwrap(t *testing.T) {
+	rawChan := make(chan int)
+	ch := NewNativeChannel(5)
+	Unwrap(ch, rawChan)
+
+	for i := 0; i < 5; i++ {
+		ch.In() <- i
+	}
+	ch.Close()
+
+	for i := 0; i < 5; i++ {
+		x := <-rawChan
+		if x != i {
+			t.Error("Unwrapped value", x, "was expecting", i)
+		}
+	}
+	_, ok := <-rawChan
+	if ok {
+		t.Error("Unwrapped channel didn't close")
+	}
+}
+
 func ExampleChannel() {
 	var ch Channel
 

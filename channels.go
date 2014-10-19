@@ -1,21 +1,25 @@
 /*
 Package channels provides a collection of helper functions, interfaces and implementations for
-working with and extending the capabilities of golang's existing channels.
+working with and extending the capabilities of golang's existing channels. The main interface of
+interest is Channel, though sub-interfaces are also provided for cases where the full Channel interface
+cannot be met (for example, InChannel for write-only channels).
 
-The general interface provided is Channel, though sub-interfaces are also provided for cases
-where the full Channel interface cannot be met (for example, InChannel for write-only channels).
+For integration with native typed golang channels, functions Wrap and Unwrap are provided which do the
+appropriate type conversions. The NativeChannel, NativeInChannel and NativeOutChannel type definitions
+are also provided for use with native channels which already carry values of type interface{}.
 
-Helper functions include Pipe and Tee (which behave much like their Unix namesakes), as well as Multiplex.
-Weak versions of these functions also exist, which do not close their output channel on completion.
+The heart of the package consists of several distinct implementations of the Channel interface, including
+channels backed by special buffers (resizable, infinite, ring buffers, etc) and other useful types. A
+"black hole" channel for discarding unwanted values (similar in purpose to ioutil.Discard or /dev/null)
+rounds out the set.
 
-A simple wrapper type called NativeChannel is included for wrapping native golang channels in the appropriate
-interface. Several special implementations of the Channel interface are also provided, including channels backed
-by special buffers (resizable, infinite, ring buffers, etc) and other useful types. A black hole channel for
-discarding unwanted values (similar in purpose to ioutil.Discard or /dev/null) rounds out the set.
+Helper functions for operating on Channels include Pipe and Tee (which behave much like their Unix
+namesakes), as well as Multiplex. "Weak" versions of these functions also exist, which do not close
+their output channel(s) on completion.
 
-Several types in this package provide so-called "infinite" buffers. Be *very* careful using these, as no
-buffer is truly infinite - if such a buffer grows too large your program will run out of memory and crash.
-Caveat emptor.
+Warning: several types in this package provide so-called "infinite" buffers. Be *very* careful using
+these, as no buffer is truly infinite - if such a buffer grows too large your program will run out of
+memory and crash. Caveat emptor.
 */
 package channels
 
@@ -226,4 +230,27 @@ func Wrap(ch interface{}) SimpleOutChannel {
 	}()
 
 	return NativeOutChannel(realChan)
+}
+
+// Unwrap takes a SimpleOutChannel and uses reflection to pipe it to a typed native channel for
+// easy integration with existing channel sources. Output can be any writable channel type (chan or chan<-).
+// It panics if the output is not a writable channel, or if a value is received that cannot be sent on the
+// output channel.
+func Unwrap(input SimpleOutChannel, output interface{}) {
+	t := reflect.TypeOf(output)
+	if t.Kind() != reflect.Chan || t.ChanDir()&reflect.SendDir == 0 {
+		panic("channels: input to Unwrap must be readable channel")
+	}
+
+	go func() {
+		v := reflect.ValueOf(output)
+		for {
+			x, ok := <-input.Out()
+			if !ok {
+				v.Close()
+				return
+			}
+			v.Send(reflect.ValueOf(x))
+		}
+	}()
 }
