@@ -9,6 +9,9 @@ extending [golang](http://golang.org/)'s existing channels.
 
 See https://godoc.org/github.com/eapache/channels for documentation.
 
+Requires Go version 1.1 or later, as certain necessary elements of the `reflect`
+package were not present in 1.0.
+
 Most of the channel types in this package are backed by a very fast queue
 implementation that used to be built into this package but has now been
 extracted into its own package at https://github.com/eapache/queue.
