@@ -139,6 +139,60 @@ func TestWeakTee(t *testing.T) {
 	testTee(t, WeakTee)
 }
 
+func testDistribute(t *testing.T, dist func(input SimpleOutChannel, outputs ...SimpleInChannel)) {
+	a := NewNativeChannel(None)
+	b := NewNativeChannel(None)
+
+	dist(a, b)
+
+	testChannelPair(t, "simple distribute", a, b)
+
+	a = NewNativeChannel(None)
+	outputs := []Channel{
+		NewNativeChannel(None),
+		NewNativeChannel(None),
+		NewNativeChannel(None),
+		NewNativeChannel(None),
+	}
+
+	dist(a, outputs[0], outputs[1], outputs[2], outputs[3])
+
+	go func() {
+		for i := 0; i < 1000; i++ {
+			a.In() <- i
+		}
+		a.Close()
+	}()
+
+	received := make([]bool, 1000)
+	for _ = range received {
+		var val interface{}
+		select {
+		case val = <-outputs[0].Out():
+		case val = <-outputs[1].Out():
+		case val = <-outputs[2].Out():
+		case val = <-outputs[3].Out():
+		}
+		if received[val.(int)] {
+			t.Fatal("distribute got value twice", val.(int))
+		}
+		received[val.(int)] = true
+	}
+	for i := range received {
+		if !received[i] {
+			t.Fatal("distribute missed", i)
+		}
+	}
+}
+
+func TestDistribute(t *testing.T) {
+	testDistribute(t, Distribute)
+}
+
+func TestWeakDistribute(t *testing.T) {
+	testDistribute(t, WeakDistribute)
+}
+
 func TestWrap(t *testing.T) {
 	rawChan := make(chan int, 5)
 	ch := Wrap(rawChan)

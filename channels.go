@@ -14,8 +14,8 @@ channels backed by special buffers (resizable, infinite, ring buffers, etc) and 
 rounds out the set.
 
 Helper functions for operating on Channels include Pipe and Tee (which behave much like their Unix
-namesakes), as well as Multiplex. "Weak" versions of these functions also exist, which do not close
-their output channel(s) on completion.
+namesakes), as well as Multiplex and Distribute. "Weak" versions of these functions also exist, which
+do not close their output channel(s) on completion.
 
 Warning: several types in this package provide so-called "infinite" buffers. Be *very* careful using
 these, as no buffer is truly infinite - if such a buffer grows too large your program will run out of
@@ -148,6 +148,32 @@ func Tee(input SimpleOutChannel, outputs ...SimpleInChannel) {
 	}()
 }
 
+// Distribute takes a single input channel and an arbitrary number of output channels and duplicates each input
+// into *one* available output. If multiple outputs are waiting for a value, one is chosen at random. When the
+// input channel is closed, all outputs channels are closed. Distribute with a single output channel is
+// equivalent to Pipe (though slightly less efficient).
+func Distribute(input SimpleOutChannel, outputs ...SimpleInChannel) {
+	if len(outputs) == 0 {
+		panic("channels: Distribute requires at least one output")
+	}
+	go func() {
+		cases := make([]reflect.SelectCase, len(outputs))
+		for i := range cases {
+			cases[i].Dir = reflect.SelectSend
+			cases[i].Chan = reflect.ValueOf(outputs[i].In())
+		}
+		for elem := range input.Out() {
+			for i := range cases {
+				cases[i].Send = reflect.ValueOf(elem)
+			}
+			reflect.Select(cases)
+		}
+		for i := range outputs {
+			outputs[i].Close()
+		}
+	}()
+}
+
 // WeakPipe behaves like Pipe (connecting the two channels) except that it does not close
 // the output channel when the input channel is closed.
 func WeakPipe(input SimpleOutChannel, output SimpleInChannel) {
@@ -203,6 +229,27 @@ func WeakTee(input SimpleOutChannel, outputs ...SimpleInChannel) {
 				chosen, _, _ := reflect.Select(cases)
 				cases[chosen].Chan = reflect.ValueOf(nil)
 			}
+		}
+	}()
+}
+
+// WeakDistribute behaves like Distribute (distributing a single input amongst multiple outputs) except that
+// it does not close the output channels when the input channel is closed.
+func WeakDistribute(input SimpleOutChannel, outputs ...SimpleInChannel) {
+	if len(outputs) == 0 {
+		panic("channels: WeakDistribute requires at least one output")
+	}
+	go func() {
+		cases := make([]reflect.SelectCase, len(outputs))
+		for i := range cases {
+			cases[i].Dir = reflect.SelectSend
+			cases[i].Chan = reflect.ValueOf(outputs[i].In())
+		}
+		for elem := range input.Out() {
+			for i := range cases {
+				cases[i].Send = reflect.ValueOf(elem)
+			}
+			reflect.Select(cases)
 		}
 	}()
 }
