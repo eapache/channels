@@ -82,15 +82,81 @@ type Channel interface {
 	Buffer
 }
 
+func pipe(input SimpleOutChannel, output SimpleInChannel, closeWhenDone bool) {
+	for elem := range input.Out() {
+		output.In() <- elem
+	}
+	if closeWhenDone {
+		output.Close()
+	}
+}
+
+func multiplex(output SimpleInChannel, inputs []SimpleOutChannel, closeWhenDone bool) {
+	inputCount := len(inputs)
+	cases := make([]reflect.SelectCase, inputCount)
+	for i := range cases {
+		cases[i].Dir = reflect.SelectRecv
+		cases[i].Chan = reflect.ValueOf(inputs[i].Out())
+	}
+	for inputCount > 0 {
+		chosen, recv, recvOK := reflect.Select(cases)
+		if recvOK {
+			output.In() <- recv.Interface()
+		} else {
+			cases[chosen].Chan = reflect.ValueOf(nil)
+			inputCount--
+		}
+	}
+	if closeWhenDone {
+		output.Close()
+	}
+}
+
+func tee(input SimpleOutChannel, outputs []SimpleInChannel, closeWhenDone bool) {
+	cases := make([]reflect.SelectCase, len(outputs))
+	for i := range cases {
+		cases[i].Dir = reflect.SelectSend
+	}
+	for elem := range input.Out() {
+		for i := range cases {
+			cases[i].Chan = reflect.ValueOf(outputs[i].In())
+			cases[i].Send = reflect.ValueOf(elem)
+		}
+		for _ = range cases {
+			chosen, _, _ := reflect.Select(cases)
+			cases[chosen].Chan = reflect.ValueOf(nil)
+		}
+	}
+	if closeWhenDone {
+		for i := range outputs {
+			outputs[i].Close()
+		}
+	}
+}
+
+func distribute(input SimpleOutChannel, outputs []SimpleInChannel, closeWhenDone bool) {
+	cases := make([]reflect.SelectCase, len(outputs))
+	for i := range cases {
+		cases[i].Dir = reflect.SelectSend
+		cases[i].Chan = reflect.ValueOf(outputs[i].In())
+	}
+	for elem := range input.Out() {
+		for i := range cases {
+			cases[i].Send = reflect.ValueOf(elem)
+		}
+		reflect.Select(cases)
+	}
+	if closeWhenDone {
+		for i := range outputs {
+			outputs[i].Close()
+		}
+	}
+}
+
 // Pipe connects the input channel to the output channel so that
 // they behave as if a single channel.
 func Pipe(input SimpleOutChannel, output SimpleInChannel) {
-	go func() {
-		for elem := range input.Out() {
-			output.In() <- elem
-		}
-		output.Close()
-	}()
+	go pipe(input, output, true)
 }
 
 // Multiplex takes an arbitrary number of input channels and multiplexes their output into a single output
@@ -100,24 +166,7 @@ func Multiplex(output SimpleInChannel, inputs ...SimpleOutChannel) {
 	if len(inputs) == 0 {
 		panic("channels: Multiplex requires at least one input")
 	}
-	go func() {
-		inputCount := len(inputs)
-		cases := make([]reflect.SelectCase, inputCount)
-		for i := range cases {
-			cases[i].Dir = reflect.SelectRecv
-			cases[i].Chan = reflect.ValueOf(inputs[i].Out())
-		}
-		for inputCount > 0 {
-			chosen, recv, recvOK := reflect.Select(cases)
-			if recvOK {
-				output.In() <- recv.Interface()
-			} else {
-				cases[chosen].Chan = reflect.ValueOf(nil)
-				inputCount--
-			}
-		}
-		output.Close()
-	}()
+	go multiplex(output, inputs, true)
 }
 
 // Tee (like its Unix namesake) takes a single input channel and an arbitrary number of output channels
@@ -127,25 +176,7 @@ func Tee(input SimpleOutChannel, outputs ...SimpleInChannel) {
 	if len(outputs) == 0 {
 		panic("channels: Tee requires at least one output")
 	}
-	go func() {
-		cases := make([]reflect.SelectCase, len(outputs))
-		for i := range cases {
-			cases[i].Dir = reflect.SelectSend
-		}
-		for elem := range input.Out() {
-			for i := range cases {
-				cases[i].Chan = reflect.ValueOf(outputs[i].In())
-				cases[i].Send = reflect.ValueOf(elem)
-			}
-			for _ = range cases {
-				chosen, _, _ := reflect.Select(cases)
-				cases[chosen].Chan = reflect.ValueOf(nil)
-			}
-		}
-		for i := range outputs {
-			outputs[i].Close()
-		}
-	}()
+	go tee(input, outputs, true)
 }
 
 // Distribute takes a single input channel and an arbitrary number of output channels and duplicates each input
@@ -156,32 +187,13 @@ func Distribute(input SimpleOutChannel, outputs ...SimpleInChannel) {
 	if len(outputs) == 0 {
 		panic("channels: Distribute requires at least one output")
 	}
-	go func() {
-		cases := make([]reflect.SelectCase, len(outputs))
-		for i := range cases {
-			cases[i].Dir = reflect.SelectSend
-			cases[i].Chan = reflect.ValueOf(outputs[i].In())
-		}
-		for elem := range input.Out() {
-			for i := range cases {
-				cases[i].Send = reflect.ValueOf(elem)
-			}
-			reflect.Select(cases)
-		}
-		for i := range outputs {
-			outputs[i].Close()
-		}
-	}()
+	go distribute(input, outputs, true)
 }
 
 // WeakPipe behaves like Pipe (connecting the two channels) except that it does not close
 // the output channel when the input channel is closed.
 func WeakPipe(input SimpleOutChannel, output SimpleInChannel) {
-	go func() {
-		for elem := range input.Out() {
-			output.In() <- elem
-		}
-	}()
+	go pipe(input, output, false)
 }
 
 // WeakMultiplex behaves like Multiplex (multiplexing multiple inputs into a single output) except that it does not close
@@ -190,23 +202,7 @@ func WeakMultiplex(output SimpleInChannel, inputs ...SimpleOutChannel) {
 	if len(inputs) == 0 {
 		panic("channels: WeakMultiplex requires at least one input")
 	}
-	go func() {
-		inputCount := len(inputs)
-		cases := make([]reflect.SelectCase, inputCount)
-		for i := range cases {
-			cases[i].Dir = reflect.SelectRecv
-			cases[i].Chan = reflect.ValueOf(inputs[i].Out())
-		}
-		for inputCount > 0 {
-			chosen, recv, recvOK := reflect.Select(cases)
-			if recvOK {
-				output.In() <- recv.Interface()
-			} else {
-				cases[chosen].Chan = reflect.ValueOf(nil)
-				inputCount--
-			}
-		}
-	}()
+	go multiplex(output, inputs, false)
 }
 
 // WeakTee behaves like Tee (duplicating a single input into multiple outputs) except that it does not close
@@ -215,22 +211,7 @@ func WeakTee(input SimpleOutChannel, outputs ...SimpleInChannel) {
 	if len(outputs) == 0 {
 		panic("channels: WeakTee requires at least one output")
 	}
-	go func() {
-		cases := make([]reflect.SelectCase, len(outputs))
-		for i := range cases {
-			cases[i].Dir = reflect.SelectSend
-		}
-		for elem := range input.Out() {
-			for i := range cases {
-				cases[i].Chan = reflect.ValueOf(outputs[i].In())
-				cases[i].Send = reflect.ValueOf(elem)
-			}
-			for _ = range cases {
-				chosen, _, _ := reflect.Select(cases)
-				cases[chosen].Chan = reflect.ValueOf(nil)
-			}
-		}
-	}()
+	go tee(input, outputs, false)
 }
 
 // WeakDistribute behaves like Distribute (distributing a single input amongst multiple outputs) except that
@@ -239,19 +220,7 @@ func WeakDistribute(input SimpleOutChannel, outputs ...SimpleInChannel) {
 	if len(outputs) == 0 {
 		panic("channels: WeakDistribute requires at least one output")
 	}
-	go func() {
-		cases := make([]reflect.SelectCase, len(outputs))
-		for i := range cases {
-			cases[i].Dir = reflect.SelectSend
-			cases[i].Chan = reflect.ValueOf(outputs[i].In())
-		}
-		for elem := range input.Out() {
-			for i := range cases {
-				cases[i].Send = reflect.ValueOf(elem)
-			}
-			reflect.Select(cases)
-		}
-	}()
+	go distribute(input, outputs, false)
 }
 
 // Wrap takes any readable channel type (chan or <-chan but not chan<-) and
