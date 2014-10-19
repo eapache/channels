@@ -227,3 +227,26 @@ func Wrap(ch interface{}) SimpleOutChannel {
 
 	return NativeOutChannel(realChan)
 }
+
+// Unwrap takes a SimpleOutChannel and uses reflection to pipe it to a typed native channel for
+// easy integration with existing channel sources. Output can be any writable channel type (chan or chan<-).
+// It panics if the output is not a writable channel, or if a value is received that cannot be sent on the
+// output channel.
+func Unwrap(input SimpleOutChannel, output interface{}) {
+	t := reflect.TypeOf(output)
+	if t.Kind() != reflect.Chan || t.ChanDir()&reflect.SendDir == 0 {
+		panic("channels: input to Unwrap must be readable channel")
+	}
+
+	go func() {
+		v := reflect.ValueOf(output)
+		for {
+			x, ok := <-input.Out()
+			if !ok {
+				v.Close()
+				return
+			}
+			v.Send(reflect.ValueOf(x))
+		}
+	}()
+}
