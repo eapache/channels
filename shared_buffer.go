@@ -82,20 +82,20 @@ func (buf *SharedBuffer) mainLoop() {
 		i, val, ok := reflect.Select(buf.cases)
 
 		if i == 0 {
-			if ok {
-				//NewChannel was called on the SharedBuffer
-				ch := val.Interface().(*sharedBufferChannel)
-				buf.chans = append(buf.chans, ch)
-				buf.cases = append(buf.cases,
-					reflect.SelectCase{Dir: reflect.SelectRecv},
-					reflect.SelectCase{Dir: reflect.SelectSend},
-				)
-				if buf.size == Infinity || buf.count < int(buf.size) {
-					buf.cases[len(buf.cases)-2].Chan = reflect.ValueOf(ch.in)
-				}
-			} else {
+			if !ok {
 				//Close was called on the SharedBuffer itself
 				return
+			}
+
+			//NewChannel was called on the SharedBuffer
+			ch := val.Interface().(*sharedBufferChannel)
+			buf.chans = append(buf.chans, ch)
+			buf.cases = append(buf.cases,
+				reflect.SelectCase{Dir: reflect.SelectRecv},
+				reflect.SelectCase{Dir: reflect.SelectSend},
+			)
+			if buf.size == Infinity || buf.count < int(buf.size) {
+				buf.cases[len(buf.cases)-2].Chan = reflect.ValueOf(ch.in)
 			}
 		} else if i%2 == 0 {
 			//Send
@@ -118,6 +118,7 @@ func (buf *SharedBuffer) mainLoop() {
 				buf.cases[i].Send = reflect.Value{}
 				if ch.closed {
 					// and it was closed, so close the output channel
+					//TODO: shrink slice
 					close(ch.out)
 				}
 			}
@@ -145,6 +146,7 @@ func (buf *SharedBuffer) mainLoop() {
 				ch.closed = true
 				if ch.buf.Length() == 0 && !buf.cases[i+1].Chan.IsValid() {
 					//nothing pending, close the out channel right away
+					//TODO: shrink slice
 					close(ch.out)
 				}
 			}
