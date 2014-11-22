@@ -19,8 +19,8 @@ do not close their output channel(s) on completion.
 
 Due to limitations of Go's type system, importing this library directly is often not practical for
 production code. It serves equally well, however, as a reference guide and template for implementing
-many common idioms; if you use it in this way I would greatly appreciate the inclusion of some sort
-of credit in the resulting code.
+many common idioms; if you use it in this way I would appreciate the inclusion of some sort of credit
+in the resulting code.
 
 Warning: several types in this package provide so-called "infinite" buffers. Be *very* careful using
 these, as no buffer is truly infinite - if such a buffer grows too large your program will run out of

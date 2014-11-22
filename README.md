@@ -9,7 +9,7 @@ extending [Go](https://golang.org/)'s existing channels. Due to limitations
 of Go's type system, importing this library directly is often not practical for
 production code. It serves equally well, however, as a reference guide and
 template for implementing many common idioms; if you use it in this way I would
-greatly appreciate the inclusion of some sort of credit in the resulting code.
+appreciate the inclusion of some sort of credit in the resulting code.
 
 See https://godoc.org/github.com/eapache/channels for full documentation.
 
