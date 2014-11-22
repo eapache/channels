@@ -5,15 +5,19 @@ channels
 [![GoDoc](https://godoc.org/github.com/eapache/channels?status.png)](https://godoc.org/github.com/eapache/channels)
 
 A collection of helper functions and special types for working with and
-extending [golang](https://golang.org/)'s existing channels.
+extending [Go](https://golang.org/)'s existing channels. Due to limitations
+of Go's type system, importing this library directly is often not practical for
+production code. It serves equally well, however, as a reference guide and
+template for implementing many common idioms; if you use it in this way I would
+greatly appreciate the inclusion of some sort of credit in the resulting code.
 
-See https://godoc.org/github.com/eapache/channels for documentation.
+See https://godoc.org/github.com/eapache/channels for full documentation.
 
 Requires Go version 1.1 or later, as certain necessary elements of the `reflect`
 package were not present in 1.0.
 
-Most of the channel types in this package are backed by a very fast queue
-implementation that used to be built into this package but has now been
+Most of the buffered channel types in this package are backed by a very fast
+queue implementation that used to be built into this package but has now been
 extracted into its own package at https://github.com/eapache/queue.
 
 *Note:* Several types in this package provide so-called "infinite" buffers. Be
