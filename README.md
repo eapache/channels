@@ -11,7 +11,8 @@ production code. It serves equally well, however, as a reference guide and
 template for implementing many common idioms; if you use it in this way I would
 appreciate the inclusion of some sort of credit in the resulting code.
 
-See https://godoc.org/github.com/eapache/channels for full documentation.
+See https://godoc.org/github.com/eapache/channels for full documentation or
+https://gopkg.in/eapache/channels.v1 for a versioned import path.
 
 Requires Go version 1.1 or later, as certain necessary elements of the `reflect`
 package were not present in 1.0.
