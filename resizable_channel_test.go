@@ -29,6 +29,9 @@ func TestResizableChannel(t *testing.T) {
 	ch = NewResizableChannel()
 	ch.Resize(5)
 	testChannelPair(t, "5-buffer resizable channel", ch, ch)
+
+	ch = NewResizableChannel()
+	testChannelConcurrentAccessors(t, "resizable channel", ch)
 }
 
 func TestResizableChannelOnline(t *testing.T) {

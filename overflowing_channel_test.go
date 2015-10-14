@@ -43,4 +43,7 @@ func TestOverflowingChannel(t *testing.T) {
 	if val, open := <-ch.Out(); open == true {
 		t.Fatal("overflowing channel expected closed but got", val)
 	}
+
+	ch = NewOverflowingChannel(2)
+	testChannelConcurrentAccessors(t, "overflowing channel", ch)
 }

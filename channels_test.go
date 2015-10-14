@@ -36,6 +36,20 @@ func testChannelPair(t *testing.T, name string, in InChannel, out OutChannel) {
 	}
 }
 
+func testChannelConcurrentAccessors(t *testing.T, name string, ch Channel) {
+	// no asserts here, this is just for the race detector's benefit
+	go ch.Len()
+	go ch.Cap()
+
+	go func() {
+		ch.In() <- nil
+	}()
+
+	go func() {
+		<-ch.Out()
+	}()
+}
+
 func TestPipe(t *testing.T) {
 	a := NewNativeChannel(None)
 	b := NewNativeChannel(None)
