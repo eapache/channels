@@ -18,7 +18,12 @@ func NewRingChannel(size BufferCap) *RingChannel {
 	if size < 0 && size != Infinity {
 		panic("channels: invalid negative size in NewRingChannel")
 	}
-	ch := &RingChannel{make(chan interface{}), make(chan interface{}), queue.New(), size}
+	ch := &RingChannel{
+		input:  make(chan interface{}),
+		output: make(chan interface{}),
+		buffer: queue.New(),
+		size:   size,
+	}
 	if size == None {
 		go ch.overflowingDirect()
 	} else {

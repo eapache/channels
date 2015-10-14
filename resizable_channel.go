@@ -16,7 +16,13 @@ type ResizableChannel struct {
 }
 
 func NewResizableChannel() *ResizableChannel {
-	ch := &ResizableChannel{make(chan interface{}), make(chan interface{}), make(chan BufferCap), 1, queue.New()}
+	ch := &ResizableChannel{
+		input:  make(chan interface{}),
+		output: make(chan interface{}),
+		resize: make(chan BufferCap),
+		size:   1,
+		buffer: queue.New(),
+	}
 	go ch.magicBuffer()
 	return ch
 }
