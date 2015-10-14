@@ -47,15 +47,19 @@ func NewSharedBuffer(size BufferCap) *SharedBuffer {
 	} else if size == None {
 		panic("channels: SharedBuffer does not support unbuffered behaviour")
 	}
+
 	buf := &SharedBuffer{
 		size: size,
 		in:   make(chan *sharedBufferChannel),
 	}
+
 	buf.cases = append(buf.cases, reflect.SelectCase{
 		Dir:  reflect.SelectRecv,
 		Chan: reflect.ValueOf(buf.in),
 	})
+
 	go buf.mainLoop()
+
 	return buf
 }
 

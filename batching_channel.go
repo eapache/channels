@@ -16,7 +16,11 @@ func NewBatchingChannel(size BufferCap) *BatchingChannel {
 	if size < 0 && size != Infinity {
 		panic("channels: invalid negative size in NewBatchingChannel")
 	}
-	ch := &BatchingChannel{make(chan interface{}), make(chan interface{}), nil, size}
+	ch := &BatchingChannel{
+		input:  make(chan interface{}),
+		output: make(chan interface{}),
+		size:   size,
+	}
 	go ch.batchingBuffer()
 	return ch
 }

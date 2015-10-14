@@ -9,7 +9,11 @@ type InfiniteChannel struct {
 }
 
 func NewInfiniteChannel() *InfiniteChannel {
-	ch := &InfiniteChannel{make(chan interface{}), make(chan interface{}), queue.New()}
+	ch := &InfiniteChannel{
+		input:  make(chan interface{}),
+		output: make(chan interface{}),
+		buffer: queue.New(),
+	}
 	go ch.infiniteBuffer()
 	return ch
 }

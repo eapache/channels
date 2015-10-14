@@ -18,7 +18,11 @@ func NewOverflowingChannel(size BufferCap) *OverflowingChannel {
 	if size < 0 && size != Infinity {
 		panic("channels: invalid negative size in NewOverflowingChannel")
 	}
-	ch := &OverflowingChannel{make(chan interface{}), make(chan interface{}), nil, size}
+	ch := &OverflowingChannel{
+		input:  make(chan interface{}),
+		output: make(chan interface{}),
+		size:   size,
+	}
 	if size == None {
 		go ch.overflowingDirect()
 	} else {
