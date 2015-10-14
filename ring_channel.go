@@ -10,6 +10,7 @@ import "github.com/eapache/queue"
 // For the opposite behaviour (discarding the newest element, not the oldest) see OverflowingChannel.
 type RingChannel struct {
 	input, output chan interface{}
+	length        chan int
 	buffer        *queue.Queue
 	size          BufferCap
 }
@@ -27,6 +28,7 @@ func NewRingChannel(size BufferCap) *RingChannel {
 	if size == None {
 		go ch.overflowingDirect()
 	} else {
+		ch.length = make(chan int)
 		go ch.ringBuffer()
 	}
 	return ch
@@ -41,7 +43,11 @@ func (ch *RingChannel) Out() <-chan interface{} {
 }
 
 func (ch *RingChannel) Len() int {
-	return ch.buffer.Length()
+	if ch.size == None {
+		return 0
+	} else {
+		return <-ch.length
+	}
 }
 
 func (ch *RingChannel) Cap() BufferCap {
@@ -54,10 +60,14 @@ func (ch *RingChannel) Close() {
 
 func (ch *RingChannel) shutdown() {
 	for ch.buffer.Length() > 0 {
-		ch.output <- ch.buffer.Peek()
-		ch.buffer.Remove()
+		select {
+		case ch.output <- ch.buffer.Peek():
+			ch.buffer.Remove()
+		case ch.length <- ch.buffer.Length():
+		}
 	}
 	close(ch.output)
+	close(ch.length)
 }
 
 // for entirely unbuffered cases
@@ -76,12 +86,15 @@ func (ch *RingChannel) overflowingDirect() {
 func (ch *RingChannel) ringBuffer() {
 	for {
 		if ch.buffer.Length() == 0 {
-			elem, open := <-ch.input
-			if open {
-				ch.buffer.Add(elem)
-			} else {
-				ch.shutdown()
-				return
+			select {
+			case elem, open := <-ch.input:
+				if open {
+					ch.buffer.Add(elem)
+				} else {
+					ch.shutdown()
+					return
+				}
+			case ch.length <- ch.buffer.Length():
 			}
 		} else {
 			select {
@@ -90,6 +103,7 @@ func (ch *RingChannel) ringBuffer() {
 			// when both channels are ready, which produces unnecessary drops 50% of the time.
 			case ch.output <- ch.buffer.Peek():
 				ch.buffer.Remove()
+			case ch.length <- ch.buffer.Length():
 			default:
 				select {
 				case elem, open := <-ch.input:
@@ -104,6 +118,7 @@ func (ch *RingChannel) ringBuffer() {
 					}
 				case ch.output <- ch.buffer.Peek():
 					ch.buffer.Remove()
+				case ch.length <- ch.buffer.Length():
 				}
 			}
 		}
