@@ -16,6 +16,9 @@ func TestNativeChannels(t *testing.T) {
 
 	ch = NewNativeChannel(5)
 	testChannelPair(t, "5-buffer native channel", ch, ch)
+
+	ch = NewNativeChannel(None)
+	testChannelConcurrentAccessors(t, "native channel", ch)
 }
 
 func TestNativeInOutChannels(t *testing.T) {
@@ -49,4 +52,7 @@ func TestDeadChannel(t *testing.T) {
 	}
 
 	ch.Close()
+
+	ch = NewDeadChannel()
+	testChannelConcurrentAccessors(t, "dead channel", ch)
 }

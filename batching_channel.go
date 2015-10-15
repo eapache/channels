@@ -5,6 +5,7 @@ package channels
 // will panic, that configuration is not supported (and provides no benefit over an unbuffered NativeChannel).
 type BatchingChannel struct {
 	input, output chan interface{}
+	length        chan int
 	buffer        []interface{}
 	size          BufferCap
 }
@@ -19,6 +20,7 @@ func NewBatchingChannel(size BufferCap) *BatchingChannel {
 	ch := &BatchingChannel{
 		input:  make(chan interface{}),
 		output: make(chan interface{}),
+		length: make(chan int),
 		size:   size,
 	}
 	go ch.batchingBuffer()
@@ -38,7 +40,7 @@ func (ch *BatchingChannel) Out() <-chan interface{} {
 }
 
 func (ch *BatchingChannel) Len() int {
-	return len(ch.buffer)
+	return <-ch.length
 }
 
 func (ch *BatchingChannel) Cap() BufferCap {
@@ -50,23 +52,38 @@ func (ch *BatchingChannel) Close() {
 }
 
 func (ch *BatchingChannel) shutdown() {
-	ch.output <- ch.buffer
+	for ch.buffer != nil {
+		select {
+		case ch.output <- ch.buffer:
+			ch.buffer = nil
+		case ch.length <- len(ch.buffer):
+		}
+	}
 	close(ch.output)
+	close(ch.length)
 }
 
 func (ch *BatchingChannel) batchingBuffer() {
 	for {
 		if len(ch.buffer) == 0 {
-			elem, open := <-ch.input
-			if open {
-				ch.buffer = append(ch.buffer, elem)
-			} else {
-				ch.shutdown()
-				return
+			select {
+			case elem, open := <-ch.input:
+				if open {
+					ch.buffer = append(ch.buffer, elem)
+				} else {
+					ch.shutdown()
+					return
+				}
+			case ch.length <- len(ch.buffer):
 			}
 		} else if ch.size != Infinity && len(ch.buffer) >= int(ch.size) {
-			ch.output <- ch.buffer
-			ch.buffer = nil
+			for ch.buffer != nil {
+				select {
+				case ch.output <- ch.buffer:
+					ch.buffer = nil
+				case ch.length <- len(ch.buffer):
+				}
+			}
 		} else {
 			select {
 			case elem, open := <-ch.input:
@@ -78,6 +95,7 @@ func (ch *BatchingChannel) batchingBuffer() {
 				}
 			case ch.output <- ch.buffer:
 				ch.buffer = nil
+			case ch.length <- len(ch.buffer):
 			}
 		}
 	}

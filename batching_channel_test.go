@@ -27,6 +27,9 @@ func TestBatchingChannel(t *testing.T) {
 
 	ch = NewBatchingChannel(2)
 	testBatches(t, ch)
+
+	ch = NewBatchingChannel(1)
+	testChannelConcurrentAccessors(t, "batching channel", ch)
 }
 
 func TestBatchingChannelCap(t *testing.T) {

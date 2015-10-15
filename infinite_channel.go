@@ -5,6 +5,7 @@ import "github.com/eapache/queue"
 // InfiniteChannel implements the Channel interface with an infinite buffer between the input and the output.
 type InfiniteChannel struct {
 	input, output chan interface{}
+	length        chan int
 	buffer        *queue.Queue
 }
 
@@ -12,6 +13,7 @@ func NewInfiniteChannel() *InfiniteChannel {
 	ch := &InfiniteChannel{
 		input:  make(chan interface{}),
 		output: make(chan interface{}),
+		length: make(chan int),
 		buffer: queue.New(),
 	}
 	go ch.infiniteBuffer()
@@ -27,7 +29,7 @@ func (ch *InfiniteChannel) Out() <-chan interface{} {
 }
 
 func (ch *InfiniteChannel) Len() int {
-	return ch.buffer.Length()
+	return <-ch.length
 }
 
 func (ch *InfiniteChannel) Cap() BufferCap {
@@ -44,17 +46,21 @@ func (ch *InfiniteChannel) shutdown() {
 		ch.buffer.Remove()
 	}
 	close(ch.output)
+	close(ch.length)
 }
 
 func (ch *InfiniteChannel) infiniteBuffer() {
 	for {
 		if ch.buffer.Length() == 0 {
-			elem, open := <-ch.input
-			if open {
-				ch.buffer.Add(elem)
-			} else {
-				ch.shutdown()
-				return
+			select {
+			case elem, open := <-ch.input:
+				if open {
+					ch.buffer.Add(elem)
+				} else {
+					ch.shutdown()
+					return
+				}
+			case ch.length <- ch.buffer.Length():
 			}
 		} else {
 			select {
@@ -67,6 +73,7 @@ func (ch *InfiniteChannel) infiniteBuffer() {
 				}
 			case ch.output <- ch.buffer.Peek():
 				ch.buffer.Remove()
+			case ch.length <- ch.buffer.Length():
 			}
 		}
 	}

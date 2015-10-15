@@ -10,6 +10,9 @@ func TestInfiniteChannel(t *testing.T) {
 
 	ch = NewInfiniteChannel()
 	testChannelPair(t, "infinite channel", ch, ch)
+
+	ch = NewInfiniteChannel()
+	testChannelConcurrentAccessors(t, "infinite channel", ch)
 }
 
 func BenchmarkInfiniteChannelSerial(b *testing.B) {

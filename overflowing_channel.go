@@ -10,6 +10,7 @@ import "github.com/eapache/queue"
 // For the opposite behaviour (discarding the oldest element, not the newest) see RingChannel.
 type OverflowingChannel struct {
 	input, output chan interface{}
+	length        chan int
 	buffer        *queue.Queue
 	size          BufferCap
 }
@@ -21,6 +22,7 @@ func NewOverflowingChannel(size BufferCap) *OverflowingChannel {
 	ch := &OverflowingChannel{
 		input:  make(chan interface{}),
 		output: make(chan interface{}),
+		length: make(chan int),
 		size:   size,
 	}
 	if size == None {
@@ -41,7 +43,11 @@ func (ch *OverflowingChannel) Out() <-chan interface{} {
 }
 
 func (ch *OverflowingChannel) Len() int {
-	return ch.buffer.Length()
+	if ch.size == None {
+		return 0
+	} else {
+		return <-ch.length
+	}
 }
 
 func (ch *OverflowingChannel) Cap() BufferCap {
@@ -54,8 +60,11 @@ func (ch *OverflowingChannel) Close() {
 
 func (ch *OverflowingChannel) shutdown() {
 	for ch.buffer.Length() > 0 {
-		ch.output <- ch.buffer.Peek()
-		ch.buffer.Remove()
+		select {
+		case ch.output <- ch.buffer.Peek():
+			ch.buffer.Remove()
+		case ch.length <- ch.buffer.Length():
+		}
 	}
 	close(ch.output)
 }
@@ -76,12 +85,15 @@ func (ch *OverflowingChannel) overflowingDirect() {
 func (ch *OverflowingChannel) overflowingBuffer() {
 	for {
 		if ch.buffer.Length() == 0 {
-			elem, open := <-ch.input
-			if open {
-				ch.buffer.Add(elem)
-			} else {
-				ch.shutdown()
-				return
+			select {
+			case elem, open := <-ch.input:
+				if open {
+					ch.buffer.Add(elem)
+				} else {
+					ch.shutdown()
+					return
+				}
+			case ch.length <- ch.buffer.Length():
 			}
 		} else if ch.size != Infinity && ch.buffer.Length() >= int(ch.size) {
 			select {
@@ -90,6 +102,7 @@ func (ch *OverflowingChannel) overflowingBuffer() {
 			// when both channels are ready, which produces unnecessary drops 50% of the time.
 			case ch.output <- ch.buffer.Peek():
 				ch.buffer.Remove()
+			case ch.length <- ch.buffer.Length():
 			default:
 				select {
 				case _, open := <-ch.input: // discard new inputs
@@ -99,6 +112,7 @@ func (ch *OverflowingChannel) overflowingBuffer() {
 					}
 				case ch.output <- ch.buffer.Peek():
 					ch.buffer.Remove()
+				case ch.length <- ch.buffer.Length():
 				}
 			}
 		} else {
@@ -112,6 +126,7 @@ func (ch *OverflowingChannel) overflowingBuffer() {
 				}
 			case ch.output <- ch.buffer.Peek():
 				ch.buffer.Remove()
+			case ch.length <- ch.buffer.Length():
 			}
 		}
 	}

@@ -14,4 +14,13 @@ func TestBlackHole(t *testing.T) {
 	if discard.Len() != 1000 {
 		t.Error("blackhole expected 1000 was", discard.Len())
 	}
+
+	// no asserts here, this is just for the race detector's benefit
+	ch := NewBlackHole()
+	go ch.Len()
+	go ch.Cap()
+
+	go func() {
+		ch.In() <- nil
+	}()
 }

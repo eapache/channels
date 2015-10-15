@@ -43,4 +43,7 @@ func TestRingChannel(t *testing.T) {
 	if val, open := <-ch.Out(); open == true {
 		t.Fatal("ring channel expected closed but got", val)
 	}
+
+	ch = NewRingChannel(2)
+	testChannelConcurrentAccessors(t, "ring channel", ch)
 }
