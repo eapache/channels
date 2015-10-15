@@ -9,19 +9,22 @@ import "github.com/eapache/queue"
 // (see https://github.com/eapache/channels/issues/1).
 // Resizing back and forth between a finite and infinite buffer is fully supported.
 type ResizableChannel struct {
-	input, output chan interface{}
-	resize        chan BufferCap
-	size          BufferCap
-	buffer        *queue.Queue
+	input, output    chan interface{}
+	length           chan int
+	capacity, resize chan BufferCap
+	size             BufferCap
+	buffer           *queue.Queue
 }
 
 func NewResizableChannel() *ResizableChannel {
 	ch := &ResizableChannel{
-		input:  make(chan interface{}),
-		output: make(chan interface{}),
-		resize: make(chan BufferCap),
-		size:   1,
-		buffer: queue.New(),
+		input:    make(chan interface{}),
+		output:   make(chan interface{}),
+		length:   make(chan int),
+		capacity: make(chan BufferCap),
+		resize:   make(chan BufferCap),
+		size:     1,
+		buffer:   queue.New(),
 	}
 	go ch.magicBuffer()
 	return ch
@@ -36,11 +39,16 @@ func (ch *ResizableChannel) Out() <-chan interface{} {
 }
 
 func (ch *ResizableChannel) Len() int {
-	return ch.buffer.Length()
+	return <-ch.length
 }
 
 func (ch *ResizableChannel) Cap() BufferCap {
-	return ch.size
+	val, open := <-ch.capacity
+	if open {
+		return val
+	} else {
+		return ch.size
+	}
 }
 
 func (ch *ResizableChannel) Close() {
@@ -64,6 +72,8 @@ func (ch *ResizableChannel) shutdown() {
 	}
 	close(ch.output)
 	close(ch.resize)
+	close(ch.length)
+	close(ch.capacity)
 }
 
 func (ch *ResizableChannel) magicBuffer() {
@@ -78,12 +88,16 @@ func (ch *ResizableChannel) magicBuffer() {
 					return
 				}
 			case ch.size = <-ch.resize:
+			case ch.length <- ch.buffer.Length():
+			case ch.capacity <- ch.size:
 			}
 		} else if ch.size != Infinity && ch.buffer.Length() >= int(ch.size) {
 			select {
 			case ch.output <- ch.buffer.Peek():
 				ch.buffer.Remove()
 			case ch.size = <-ch.resize:
+			case ch.length <- ch.buffer.Length():
+			case ch.capacity <- ch.size:
 			}
 		} else {
 			select {
@@ -97,6 +111,8 @@ func (ch *ResizableChannel) magicBuffer() {
 			case ch.output <- ch.buffer.Peek():
 				ch.buffer.Remove()
 			case ch.size = <-ch.resize:
+			case ch.length <- ch.buffer.Length():
+			case ch.capacity <- ch.size:
 			}
 		}
 	}
