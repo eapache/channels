@@ -51,52 +51,37 @@ func (ch *BatchingChannel) Close() {
 	close(ch.input)
 }
 
-func (ch *BatchingChannel) shutdown() {
-	for ch.buffer != nil {
+func (ch *BatchingChannel) batchingBuffer() {
+	var input, output, nextInput chan interface{}
+	nextInput = ch.input
+	input = nextInput
+
+	for input != nil || output != nil {
 		select {
-		case ch.output <- ch.buffer:
+		case elem, open := <-input:
+			if open {
+				ch.buffer = append(ch.buffer, elem)
+			} else {
+				input = nil
+				nextInput = nil
+			}
+		case output <- ch.buffer:
 			ch.buffer = nil
 		case ch.length <- len(ch.buffer):
 		}
-	}
-	close(ch.output)
-	close(ch.length)
-}
 
-func (ch *BatchingChannel) batchingBuffer() {
-	for {
 		if len(ch.buffer) == 0 {
-			select {
-			case elem, open := <-ch.input:
-				if open {
-					ch.buffer = append(ch.buffer, elem)
-				} else {
-					ch.shutdown()
-					return
-				}
-			case ch.length <- len(ch.buffer):
-			}
+			input = nextInput
+			output = nil
 		} else if ch.size != Infinity && len(ch.buffer) >= int(ch.size) {
-			for ch.buffer != nil {
-				select {
-				case ch.output <- ch.buffer:
-					ch.buffer = nil
-				case ch.length <- len(ch.buffer):
-				}
-			}
+			input = nil
+			output = ch.output
 		} else {
-			select {
-			case elem, open := <-ch.input:
-				if open {
-					ch.buffer = append(ch.buffer, elem)
-				} else {
-					ch.shutdown()
-					return
-				}
-			case ch.output <- ch.buffer:
-				ch.buffer = nil
-			case ch.length <- len(ch.buffer):
-			}
+			input = nextInput
+			output = ch.output
 		}
 	}
+
+	close(ch.output)
+	close(ch.length)
 }
