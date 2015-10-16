@@ -58,18 +58,6 @@ func (ch *RingChannel) Close() {
 	close(ch.input)
 }
 
-func (ch *RingChannel) shutdown() {
-	for ch.buffer.Length() > 0 {
-		select {
-		case ch.output <- ch.buffer.Peek():
-			ch.buffer.Remove()
-		case ch.length <- ch.buffer.Length():
-		}
-	}
-	close(ch.output)
-	close(ch.length)
-}
-
 // for entirely unbuffered cases
 func (ch *RingChannel) overflowingDirect() {
 	for elem := range ch.input {
@@ -84,43 +72,43 @@ func (ch *RingChannel) overflowingDirect() {
 
 // for all buffered cases
 func (ch *RingChannel) ringBuffer() {
-	for {
-		if ch.buffer.Length() == 0 {
+	var input, output chan interface{}
+	var next interface{}
+	input = ch.input
+
+	for input != nil || output != nil {
+		select {
+		// Prefer to write if possible, which is surprisingly effective in reducing
+		// dropped elements due to overflow. The naive read/write select chooses randomly
+		// when both channels are ready, which produces unnecessary drops 50% of the time.
+		case output <- next:
+			ch.buffer.Remove()
+		default:
 			select {
-			case elem, open := <-ch.input:
+			case elem, open := <-input:
 				if open {
 					ch.buffer.Add(elem)
+					if ch.size != Infinity && ch.buffer.Length() > int(ch.size) {
+						ch.buffer.Remove()
+					}
 				} else {
-					ch.shutdown()
-					return
+					input = nil
 				}
-			case ch.length <- ch.buffer.Length():
-			}
-		} else {
-			select {
-			// Prefer to write if possible, which is surprisingly effective in reducing
-			// dropped elements due to overflow. The naive read/write select chooses randomly
-			// when both channels are ready, which produces unnecessary drops 50% of the time.
-			case ch.output <- ch.buffer.Peek():
+			case output <- next:
 				ch.buffer.Remove()
 			case ch.length <- ch.buffer.Length():
-			default:
-				select {
-				case elem, open := <-ch.input:
-					if open {
-						ch.buffer.Add(elem)
-						if ch.size != Infinity && ch.buffer.Length() > int(ch.size) {
-							ch.buffer.Remove()
-						}
-					} else {
-						ch.shutdown()
-						return
-					}
-				case ch.output <- ch.buffer.Peek():
-					ch.buffer.Remove()
-				case ch.length <- ch.buffer.Length():
-				}
 			}
 		}
+
+		if ch.buffer.Length() > 0 {
+			output = ch.output
+			next = ch.buffer.Peek()
+		} else {
+			output = nil
+			next = nil
+		}
 	}
+
+	close(ch.output)
+	close(ch.length)
 }
