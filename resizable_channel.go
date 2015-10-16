@@ -65,55 +65,45 @@ func (ch *ResizableChannel) Resize(newSize BufferCap) {
 	ch.resize <- newSize
 }
 
-func (ch *ResizableChannel) shutdown() {
-	for ch.buffer.Length() > 0 {
-		ch.output <- ch.buffer.Peek()
-		ch.buffer.Remove()
+func (ch *ResizableChannel) magicBuffer() {
+	var input, output, nextInput chan interface{}
+	var next interface{}
+	nextInput = ch.input
+	input = nextInput
+
+	for input != nil || output != nil {
+		select {
+		case elem, open := <-input:
+			if open {
+				ch.buffer.Add(elem)
+			} else {
+				input = nil
+				nextInput = nil
+			}
+		case output <- next:
+			ch.buffer.Remove()
+		case ch.size = <-ch.resize:
+		case ch.length <- ch.buffer.Length():
+		case ch.capacity <- ch.size:
+		}
+
+		if ch.buffer.Length() == 0 {
+			output = nil
+			next = nil
+		} else {
+			output = ch.output
+			next = ch.buffer.Peek()
+		}
+
+		if ch.size != Infinity && ch.buffer.Length() >= int(ch.size) {
+			input = nil
+		} else {
+			input = nextInput
+		}
 	}
+
 	close(ch.output)
 	close(ch.resize)
 	close(ch.length)
 	close(ch.capacity)
-}
-
-func (ch *ResizableChannel) magicBuffer() {
-	for {
-		if ch.buffer.Length() == 0 {
-			select {
-			case elem, open := <-ch.input:
-				if open {
-					ch.buffer.Add(elem)
-				} else {
-					ch.shutdown()
-					return
-				}
-			case ch.size = <-ch.resize:
-			case ch.length <- ch.buffer.Length():
-			case ch.capacity <- ch.size:
-			}
-		} else if ch.size != Infinity && ch.buffer.Length() >= int(ch.size) {
-			select {
-			case ch.output <- ch.buffer.Peek():
-				ch.buffer.Remove()
-			case ch.size = <-ch.resize:
-			case ch.length <- ch.buffer.Length():
-			case ch.capacity <- ch.size:
-			}
-		} else {
-			select {
-			case elem, open := <-ch.input:
-				if open {
-					ch.buffer.Add(elem)
-				} else {
-					ch.shutdown()
-					return
-				}
-			case ch.output <- ch.buffer.Peek():
-				ch.buffer.Remove()
-			case ch.size = <-ch.resize:
-			case ch.length <- ch.buffer.Length():
-			case ch.capacity <- ch.size:
-			}
-		}
-	}
 }
