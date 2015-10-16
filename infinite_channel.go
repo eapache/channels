@@ -40,41 +40,33 @@ func (ch *InfiniteChannel) Close() {
 	close(ch.input)
 }
 
-func (ch *InfiniteChannel) shutdown() {
-	for ch.buffer.Length() > 0 {
-		ch.output <- ch.buffer.Peek()
-		ch.buffer.Remove()
-	}
-	close(ch.output)
-	close(ch.length)
-}
-
 func (ch *InfiniteChannel) infiniteBuffer() {
-	for {
-		if ch.buffer.Length() == 0 {
-			select {
-			case elem, open := <-ch.input:
-				if open {
-					ch.buffer.Add(elem)
-				} else {
-					ch.shutdown()
-					return
-				}
-			case ch.length <- ch.buffer.Length():
+	var input, output chan interface{}
+	var next interface{}
+	input = ch.input
+
+	for input != nil || output != nil {
+		select {
+		case elem, open := <-input:
+			if open {
+				ch.buffer.Add(elem)
+			} else {
+				input = nil
 			}
+		case output <- next:
+			ch.buffer.Remove()
+		case ch.length <- ch.buffer.Length():
+		}
+
+		if ch.buffer.Length() > 0 {
+			output = ch.output
+			next = ch.buffer.Peek()
 		} else {
-			select {
-			case elem, open := <-ch.input:
-				if open {
-					ch.buffer.Add(elem)
-				} else {
-					ch.shutdown()
-					return
-				}
-			case ch.output <- ch.buffer.Peek():
-				ch.buffer.Remove()
-			case ch.length <- ch.buffer.Length():
-			}
+			output = nil
+			next = nil
 		}
 	}
+
+	close(ch.output)
+	close(ch.length)
 }
