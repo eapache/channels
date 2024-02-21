@@ -1,12 +1,12 @@
+**WARNING**: This package has several latent bugs and has been largely superseded
+by Golang's addition of generics, among other improvements. It was still an
+interesting project, but it isn't suitable for production use (if it ever was).
+
 channels
 ========
 
 [![GoDoc](https://godoc.org/github.com/eapache/channels?status.png)](https://godoc.org/github.com/eapache/channels)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-active-blue.svg)](https://eapache.github.io/conduct.html)
-
-**WARNING**: This package has several latent bugs and has been largely superseded
-by Golang's addition of generics, among other improvements. It was still an
-interesting project, but it isn't suitable for production use (if it ever was).
 
 A collection of helper functions and special types for working with and
 extending [Go](https://golang.org/)'s existing channels. Due to limitations
