@@ -1,6 +1,8 @@
-**WARNING**: This package has several latent bugs and has been largely superseded
-by Golang's addition of generics, among other improvements. It was still an
-interesting project, but it isn't suitable for production use (if it ever was).
+**WARNING**: This package is end-of-life, has several long-standing bugs, and
+is not receiving any more fixes. Additionally, the design has several problems
+and no longer really makes sense given Go's addition of generic types.
+It was still an interesting project, and might provide inspiration for tricks
+you can do with channels, but caveat emptor.
 
 channels
 ========
