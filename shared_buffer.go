@@ -33,6 +33,7 @@ func (sch *sharedBufferChannel) Close() {
 //means *all* such channels block and unblock for writing together. The primary use case is for implementing pipeline-style
 //parallelism with goroutines, limiting the total number of elements in the pipeline without limiting the number of elements
 //at any particular step.
+// Warning: this type has an unavoidable deadlock as implemented (see https://github.com/eapache/channels/issues/28).
 type SharedBuffer struct {
 	cases []reflect.SelectCase   // 2n+1 of these; [0] is for control, [1,3,5...] for recv, [2,4,6...] for send
 	chans []*sharedBufferChannel // n of these

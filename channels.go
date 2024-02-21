@@ -1,4 +1,9 @@
 /*
+WARNING: This package is end-of-life, has several long-standing bugs, and is not receiving any more
+fixes. Additionally, the design has several problems and no longer really makes sense given Go's
+addition of generic types. It was still an interesting project, and might provide inspiration for
+tricks you can do with channels, but caveat emptor.
+
 Package channels provides a collection of helper functions, interfaces and implementations for
 working with and extending the capabilities of golang's existing channels. The main interface of
 interest is Channel, though sub-interfaces are also provided for cases where the full Channel interface
@@ -25,6 +30,10 @@ in the resulting code.
 Warning: several types in this package provide so-called "infinite" buffers. Be *very* careful using
 these, as no buffer is truly infinite - if such a buffer grows too large your program will run out of
 memory and crash. Caveat emptor.
+
+Warning: the channel types from this package are implemented by spawning goroutines. If a channel from
+this package passes out of scope without being explicitly emptied and closed, it will leak the
+goroutine and remaining values.
 */
 package channels
 
@@ -230,6 +239,8 @@ func WeakDistribute(input SimpleOutChannel, outputs ...SimpleInChannel) {
 
 // Wrap takes any readable channel type (chan or <-chan but not chan<-) and
 // exposes it as a SimpleOutChannel for easy integration with existing channel sources.
+// Wrap adds an unavoidable buffer around the input channel, which can mess with
+// synchronization or the apparent length of the input channel.
 // It panics if the input is not a readable channel.
 func Wrap(ch interface{}) SimpleOutChannel {
 	t := reflect.TypeOf(ch)
@@ -255,6 +266,8 @@ func Wrap(ch interface{}) SimpleOutChannel {
 
 // Unwrap takes a SimpleOutChannel and uses reflection to pipe it to a typed native channel for
 // easy integration with existing channel sources. Output can be any writable channel type (chan or chan<-).
+// Unwrap adds an unavoidable buffer around the input channel, which can mess with
+// synchronization or the apparent length of the input channel.
 // It panics if the output is not a writable channel, or if a value is received that cannot be sent on the
 // output channel.
 func Unwrap(input SimpleOutChannel, output interface{}) {
